@@ -1,16 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import ProductCard from "@/components/products/ProductCard";
 import EmptyWatchlist from "@/components/products/EmptyWatchlist";
+import StatsWidget from "@/components/products/StatsWidget";
+import DealsSection from "@/components/products/DealsSection";
+import PriceCelebration from "@/components/products/PriceCelebration";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
-import { Eye } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
@@ -35,6 +41,7 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="space-y-4">
+        <Skeleton className="h-24 w-full rounded-2xl" />
         <Skeleton className="h-8 w-48" />
         {Array(3).fill(0).map((_, i) => (
           <Skeleton key={i} className="h-32 w-full rounded-xl" />
@@ -51,27 +58,36 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
+      <PriceCelebration show={showCelebration} onDone={() => setShowCelebration(false)} />
+
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Mina bevakningar</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {products.length} produkt{products.length !== 1 && "er"} bevakade
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <p className="text-muted-foreground text-sm">
+              {products.length} produkt{products.length !== 1 && "er"} bevakade
+            </p>
             {lowPriceCount > 0 && (
-              <span className="text-primary font-medium">
-                {" "}· {lowPriceCount} med lågt pris
+              <span className="inline-flex items-center gap-1 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+                <Tag className="w-3 h-3" />
+                {lowPriceCount} lågt pris
               </span>
             )}
-          </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Eye className="w-4 h-4" />
-          <span className="text-sm font-medium">{products.length}/10</span>
-        </div>
+        {products.length < 10 && (
+          <Link to="/add">
+            <Button size="sm" variant="outline" className="gap-1.5 shrink-0">
+              <Plus className="w-4 h-4" />
+              Lägg till
+            </Button>
+          </Link>
+        )}
       </motion.div>
+
+      <StatsWidget products={products} />
+
+      <DealsSection products={products} />
 
       <div className="space-y-3">
         {products.map((product, index) => (
@@ -81,6 +97,7 @@ export default function Dashboard() {
             index={index}
             onDelete={(p) => deleteMutation.mutate(p)}
             onToggleNotify={(p) => toggleNotifyMutation.mutate(p)}
+            onPriceDrop={() => setShowCelebration(true)}
           />
         ))}
       </div>

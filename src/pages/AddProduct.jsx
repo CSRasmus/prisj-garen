@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Loader2, Link2, AlertCircle } from "lucide-react";
+import { Search, Plus, Loader2, Link2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { fetchProductPrice } from "@/functions/fetchProductPrice";
 import { motion } from "framer-motion";
 
 function extractASIN(input) {
@@ -65,6 +66,8 @@ export default function AddProduct() {
     onError: (err) => setError(err.message),
   });
 
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+
   const addMutation = useMutation({
     mutationFn: async () => {
       if (products.length >= 10) throw new Error("Max 10 produkter i bevakningslistan.");
@@ -76,9 +79,14 @@ export default function AddProduct() {
         notify_on_drop: true,
       });
     },
-    onSuccess: () => {
+    onSuccess: async (created) => {
+      setFetchingPrice(true);
+      try {
+        await fetchProductPrice({ product_id: created.id, asin: created.asin, title: created.title });
+      } catch (_) {}
+      setFetchingPrice(false);
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast({ title: "Produkt tillagd!", description: "Vi börjar bevaka priset." });
+      toast({ title: "Produkt tillagd!", description: "Priset är nu hämtat och bevakning startar." });
       navigate("/");
     },
     onError: (err) => setError(err.message),
@@ -182,14 +190,14 @@ export default function AddProduct() {
                 <Button
                   className="w-full gap-2"
                   onClick={() => addMutation.mutate()}
-                  disabled={!title.trim() || addMutation.isPending}
+                  disabled={!title.trim() || addMutation.isPending || fetchingPrice}
                 >
-                  {addMutation.isPending ? (
+                  {(addMutation.isPending || fetchingPrice) ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Plus className="w-4 h-4" />
                   )}
-                  Lägg till bevakning
+                  {fetchingPrice ? "Hämtar nuvarande pris..." : addMutation.isPending ? "Lägger till..." : "Lägg till bevakning"}
                 </Button>
               </motion.div>
             )}

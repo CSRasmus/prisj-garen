@@ -1,14 +1,35 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Trash2, Bell, BellOff, Package } from "lucide-react";
-import { motion } from "framer-motion";
+import { ExternalLink, Trash2, Bell, BellOff, Package, RefreshCw, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { formatDistanceToNow } from "date-fns";
+import { sv } from "date-fns/locale";
 import PriceBadge from "./PriceBadge";
 import { formatPrice, getPriceStatus, buildAmazonUrl } from "@/lib/affiliateUtils";
+import { fetchProductPrice } from "@/functions/fetchProductPrice";
+import { useQueryClient } from "@tanstack/react-query";
 
-export default function ProductCard({ product, onDelete, onToggleNotify, index = 0 }) {
+export default function ProductCard({ product, onDelete, onToggleNotify, index = 0, onPriceDrop }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const queryClient = useQueryClient();
   const status = getPriceStatus(product.current_price, product.lowest_price_90d, product.highest_price_90d);
+
+  const handleRefresh = async (e) => {
+    e.stopPropagation();
+    setRefreshing(true);
+    const prevLow = product.is_low_price;
+    await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
+    await queryClient.invalidateQueries({ queryKey: ["products"] });
+    const updated = queryClient.getQueryData(["products"])?.find(p => p.id === product.id);
+    if (updated?.is_low_price && !prevLow) onPriceDrop?.();
+    setRefreshing(false);
+  };
+
+  const lastChecked = product.last_checked
+    ? formatDistanceToNow(new Date(product.last_checked), { addSuffix: true, locale: sv })
+    : null;
 
   return (
     <motion.div
@@ -16,18 +37,24 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
     >
-      <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border/60">
+      <Card className={`group overflow-hidden hover:shadow-lg transition-all duration-300 border-border/60 ${status === "low" ? "border-primary/40" : ""}`}>
+        {status === "low" && (
+          <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
+        )}
         <div className="flex gap-4 p-4">
           <Link to={`/product/${product.id}`} className="shrink-0">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-              {product.image_url ? (
-                <img
-                  src={product.image_url}
-                  alt={product.title}
-                  className="w-full h-full object-contain p-1"
+            <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-muted flex items-center justify-center overflow-hidden relative ${status === "low" ? "ring-2 ring-primary/30" : ""}`}>
+              {status === "low" && (
+                <motion.div
+                  className="absolute inset-0 rounded-lg bg-primary/10"
+                  animate={{ opacity: [0.3, 0.6, 0.3] }}
+                  transition={{ duration: 2, repeat: Infinity }}
                 />
+              )}
+              {product.image_url ? (
+                <img src={product.image_url} alt={product.title} className="w-full h-full object-contain p-1 relative z-10" />
               ) : (
-                <Package className="w-8 h-8 text-muted-foreground/40" />
+                <Package className="w-8 h-8 text-muted-foreground/40 relative z-10" />
               )}
             </div>
           </Link>
@@ -42,7 +69,7 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
               <PriceBadge status={status} />
             </div>
 
-            <div className="mt-2 flex items-baseline gap-2">
+            <div className="mt-2 flex items-baseline gap-2 flex-wrap">
               <span className={`text-xl sm:text-2xl font-bold tracking-tight ${status === "low" ? "text-primary" : ""}`}>
                 {formatPrice(product.current_price, product.currency)}
               </span>
@@ -53,41 +80,40 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
               )}
             </div>
 
+            {lastChecked && (
+              <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                Uppdaterad {lastChecked}
+              </div>
+            )}
+
             <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <a
-                href={buildAmazonUrl(product.asin)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                 <Button size="sm" variant={status === "low" ? "default" : "outline"} className="gap-1.5 h-8 text-xs">
                   <ExternalLink className="w-3 h-3" />
                   Köp nu
                 </Button>
               </a>
               <Button
-                size="sm"
-                variant="ghost"
+                size="sm" variant="ghost"
                 className="h-8 text-xs gap-1.5 text-muted-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleNotify(product);
-                }}
+                disabled={refreshing}
+                onClick={handleRefresh}
               >
-                {product.notify_on_drop ? (
-                  <><Bell className="w-3 h-3" /> Notis på</>
-                ) : (
-                  <><BellOff className="w-3 h-3" /> Notis av</>
-                )}
+                <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
+                {refreshing ? "Kollar..." : "Uppdatera"}
               </Button>
               <Button
-                size="sm"
-                variant="ghost"
+                size="sm" variant="ghost"
+                className="h-8 text-xs gap-1.5 text-muted-foreground"
+                onClick={(e) => { e.stopPropagation(); onToggleNotify(product); }}
+              >
+                {product.notify_on_drop ? <><Bell className="w-3 h-3" /> Notis på</> : <><BellOff className="w-3 h-3" /> Notis av</>}
+              </Button>
+              <Button
+                size="sm" variant="ghost"
                 className="h-8 text-xs text-destructive hover:text-destructive gap-1.5"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(product);
-                }}
+                onClick={(e) => { e.stopPropagation(); onDelete(product); }}
               >
                 <Trash2 className="w-3 h-3" />
                 Ta bort
