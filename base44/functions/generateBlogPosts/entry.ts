@@ -27,17 +27,55 @@ function buildProductsText(products) {
   return products.map(p => `${p.title} (${p.current_price} kr)`).join(", ");
 }
 
+async function calculatePriceMetrics(globalHistory, asin, days = 90) {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+
+  const relevantEntries = globalHistory
+    .filter(h => h.asin === asin && h.checked_at && new Date(h.checked_at) >= cutoffDate)
+    .sort((a, b) => new Date(a.checked_at) - new Date(b.checked_at));
+
+  if (relevantEntries.length === 0) return null;
+
+  const prices = relevantEntries.map(e => e.price);
+  const currentPrice = prices[prices.length - 1];
+  const lowestPrice = Math.min(...prices);
+  const highestPrice = Math.max(...prices);
+  const avgPrice = Math.round(prices.reduce((a, b) => a + b) / prices.length);
+  
+  // Count price drops (where price decreased from previous)
+  let dropCount = 0;
+  for (let i = 1; i < prices.length; i++) {
+    if (prices[i] < prices[i - 1]) dropCount++;
+  }
+
+  // Percentage drop from average
+  const percentFromAvg = avgPrice > 0 ? Math.round(((avgPrice - currentPrice) / avgPrice) * 100) : 0;
+
+  return {
+    currentPrice,
+    lowestPrice,
+    highestPrice,
+    avgPrice,
+    dropCount,
+    percentFromAvg,
+    history: relevantEntries,
+  };
+}
+
 async function generateArticles(base44) {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
-  // Fetch top products with price drops in last 7 days
+  // Fetch all price history
   const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
     { amazon_domain: "amazon.se" },
     "-checked_at",
-    1000
+    5000
   );
 
+  // Find products with data in last 7 days
   const asinMap = {};
   globalHistory.forEach(h => {
     if (h.checked_at && new Date(h.checked_at) >= sevenDaysAgo) {
@@ -57,53 +95,88 @@ async function generateArticles(base44) {
     .sort((a, b) => b.drop - a.drop)
     .slice(0, 10);
 
-  // Get product details
+  // Get product details with full metrics
   const topProducts = [];
   for (const pd of priceDrops) {
     const p = await base44.asServiceRole.entities.Product.filter({ asin: pd.asin }, "-updated_date", 1);
-    if (p.length > 0) topProducts.push(p[0]);
+    if (p.length > 0) {
+      const metrics = await calculatePriceMetrics(globalHistory, pd.asin, 90);
+      if (metrics) {
+        topProducts.push({ ...p[0], metrics });
+      }
+    }
   }
 
   const lowPriceProducts = await base44.asServiceRole.entities.Product.filter(
     { is_low_price: true },
     "-updated_date",
-    10
+    15
   );
+
+  // Calculate metrics for low price products
+  for (let prod of lowPriceProducts) {
+    const metrics = await calculatePriceMetrics(globalHistory, prod.asin, 90);
+    if (metrics) prod.metrics = metrics;
+  }
 
   // Determine category rotation (weekly)
   const weekNumber = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
   const categories = ["husdjur", "elektronik", "hem", "deals"];
   const rotatedCategory = categories[weekNumber % categories.length];
 
+  const DISCLAIMER = "<p style='margin-top: 24px; padding: 12px; background: #f3f4f6; border-left: 4px solid #16a34a; font-size: 12px; color: #666;'><strong>Prisdata:</strong> Baseras på PrisJägarens prisdatabas och uppdateras dagligen från Amazon.se.</p>";
+
   // Generate articles
   const articles = [];
 
-  // Article 1: Weekly Best Deals
-  const productsTextDeals = buildProductsText(topProducts.slice(0, 5));
-  const article1Prompt = `Du är en svensk deals-skribent. Skriv ett engagerande SEO-optimerat blogginlägg på svenska om veckans bästa deals på Amazon.se. Inkludera dessa produkter med deras priser: ${productsTextDeals}. Artikeln ska vara 400-600 ord, ha en H1-rubrik, 3-4 H2-rubriker, och vara optimerad för sökordet 'Amazon deals Sverige vecka ${Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000))}'. Skriv i HTML-format med <h1>, <h2>, <p>-taggar. Avsluta med en CTA att bevaka priser gratis på PrisJägaren.`;
+  // Article 1: Weekly Price Analysis (data-driven)
+  const weeklyTopProducts = topProducts.slice(0, 5);
+  const weeklyProductsData = weeklyTopProducts
+    .filter(p => p.metrics)
+    .map(p => `${p.title}: nuvarande pris ${p.metrics.currentPrice} kr, lägsta 90d ${p.metrics.lowestPrice} kr, högsta 90d ${p.metrics.highestPrice} kr, genomsnitt ${p.metrics.avgPrice} kr, priset sjunkit ${p.metrics.dropCount} gånger senaste 90 dagarna, ${p.metrics.percentFromAvg}% under genomsnitt`)
+    .join(". ");
+
+  const article1Prompt = `Du är en datadriven prisjournalist på svenska. Skriv en SEO-artikel baserad på denna VERKLIG prisdata från Amazon.se denna vecka: ${weeklyProductsData}. 
+
+Artikeln ska kännas som en riktig analys, inte reklam. Inkludera meningar som "Enligt vår prisdata har X sjunkit X% under veckan" och "Genomsnittspriset de senaste 90 dagarna är X kr". 
+
+Skriv 500 ord i HTML-format med <h1>, <h2>, <p>-taggar. Var konkret med siffror och analyser. Avsluta med en CTA att bevaka priser gratis på PrisJägaren.`;
 
   const article1Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
     prompt: article1Prompt,
     model: "claude_sonnet_4_6",
   });
 
-  const article1Slug = await checkAndAdjustSlug(base44, generateSlug("Veckans bästa deals Amazon"));
+  const article1Slug = await checkAndAdjustSlug(base44, generateSlug("Veckans prisanalys Amazon"));
   articles.push({
-    title: `Veckans bästa deals på Amazon (Vecka ${weekNumber})`,
+    title: `Veckans prisanalys: Amazon-priser sjönk ${Math.round(weeklyTopProducts[0]?.metrics?.percentFromAvg || 0)}% (Vecka ${weekNumber})`,
     slug: article1Slug,
-    content: article1Response,
-    excerpt: article1Response.substring(0, 150),
+    content: article1Response + DISCLAIMER,
+    excerpt: `Denna vecka sjönk priserna på topp-produkter på Amazon.se. Se vår analys av verklig prisdata.`,
     category: "deals",
-    products_mentioned: topProducts.slice(0, 5).map(p => p.asin).join(","),
-    seo_title: `Amazon deals Sverige - Vecka ${weekNumber} | PrisJägaren`,
-    seo_description: "Veckans bästa deals och prigsfall på Amazon.se. Spara hundratals kronor på elektronik, hem och mer.",
-    featured_image_url: topProducts[0]?.image_url || null,
+    products_mentioned: weeklyTopProducts.map(p => p.asin).join(","),
+    seo_title: `Amazon prisanalys vecka ${weekNumber} - Verklig prisdata Sverige | PrisJägaren`,
+    seo_description: "Veckans prisanalys baserad på verklig prisdata från Amazon.se. Se vilka produkter som sjunkit mest.",
+    featured_image_url: weeklyTopProducts[0]?.image_url || null,
   });
 
-  // Article 2: Price analysis of top product with biggest drop
+  // Article 2: Deep product price analysis (90-day history)
   if (topProducts.length > 0) {
     const topProduct = topProducts[0];
-    const article2Prompt = `Skriv en SEO-optimerad prisanalys på svenska för ${topProduct.title} på Amazon.se. Inkludera: nuvarande pris ${topProduct.current_price} kr, lägsta pris senaste 90 dagarna ${topProduct.lowest_price_90d} kr, högsta pris ${topProduct.highest_price_90d} kr, prishistorik-analys, när är bästa tiden att köpa, och en rekommendation. 300-500 ord i HTML-format med <h1>, <h2>, <p>-taggar. Optimera för sökordet '${topProduct.title} pris Sverige'.`;
+    const metrics = topProduct.metrics;
+    
+    const priceHistory = metrics.history
+      .map(h => `${new Date(h.checked_at).toLocaleDateString("sv-SE")}: ${h.price} kr`)
+      .slice(-20) // Last 20 entries for context
+      .join(", ");
+
+    const article2Prompt = `Skriv en djupgående prisanalys på svenska för ${topProduct.title} baserat på denna 90-dagars prishistorik: ${priceHistory}.
+
+Analysera: pristrend (stigande/sjunkande), bästa köptillfällen historiskt, säsongsvariationer om några, och ge en konkret rekommendation om det är bra att köpa nu. Känn dig fri att vara kritisk.
+
+Nuvarande pris: ${metrics.currentPrice} kr, lägsta: ${metrics.lowestPrice} kr, högsta: ${metrics.highestPrice} kr, genomsnitt: ${metrics.avgPrice} kr.
+
+Skriv 400-600 ord i HTML-format med <h1>, <h2>, <p>-taggar.`;
 
     const article2Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: article2Prompt,
@@ -112,22 +185,32 @@ async function generateArticles(base44) {
 
     const article2Slug = await checkAndAdjustSlug(base44, generateSlug(topProduct.title));
     articles.push({
-      title: `${topProduct.title} – Prisanalys & köpguide`,
+      title: `${topProduct.title}: Är det bra att köpa nu? (90-dagars prisanalys)`,
       slug: article2Slug,
-      content: article2Response,
-      excerpt: article2Response.substring(0, 150),
+      content: article2Response + DISCLAIMER,
+      excerpt: `Djupanalys av ${topProduct.title} baserad på 90 dagars prisdata från Amazon.se.`,
       category: "elektronik",
       products_mentioned: topProduct.asin,
-      seo_title: `${topProduct.title} pris Sverige - Köpguide | PrisJägaren`,
-      seo_description: `Prisanalys för ${topProduct.title}. Lägsta pris senaste 90 dagarna, prishistorik och köptips.`,
+      seo_title: `${topProduct.title} - 90 dagars prisanalys | PrisJägaren`,
+      seo_description: `Djupgående prisanalys för ${topProduct.title}. Är det bra att köpa nu? Se prishistorik och rekommendation.`,
       featured_image_url: topProduct.image_url || null,
     });
   }
 
-  // Article 3: Category guide
-  const categoryProducts = lowPriceProducts.filter(p => p.category === rotatedCategory).slice(0, 5);
-  const productsTextCategory = buildProductsText(categoryProducts);
-  const article3Prompt = `Skriv en köpguide på svenska för ${rotatedCategory}-produkter på Amazon.se. Inkludera tips om när priser brukar sjunka, hur man hittar bästa deals, och nämn dessa aktuella låga priser: ${productsTextCategory}. 400-600 ord i HTML-format med <h1>, <h2>, <p>-taggar. Optimera för nyckelord relaterat till ${rotatedCategory}.`;
+  // Article 3: Category price report (monthly)
+  const categoryProducts = lowPriceProducts
+    .filter(p => p.metrics && p.category === rotatedCategory)
+    .slice(0, 8);
+
+  const categoryDataText = categoryProducts
+    .map(p => `${p.title}: ${p.metrics.currentPrice} kr (var ${p.metrics.avgPrice} kr i genomsnitt), sjunkit ${p.metrics.percentFromAvg}%`)
+    .join(". ");
+
+  const article3Prompt = `Skriv en månadsrapport på svenska om prisutvecklingen för ${rotatedCategory}-produkter på Amazon.se. Basera på denna data: ${categoryDataText}.
+
+Skriv som en riktig konsumentrapport med konkreta siffror och procenttal. Analysera trender, vilka produkter som är billiga just nu, och ge praktiska köptips. 
+
+Skriv 400-500 ord i HTML-format med <h1>, <h2>, <p>-taggar.`;
 
   const article3Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
     prompt: article3Prompt,
@@ -135,16 +218,16 @@ async function generateArticles(base44) {
   });
 
   const categoryLabel = { husdjur: "Husdjur", elektronik: "Elektronik", hem: "Hem", deals: "Deals" }[rotatedCategory];
-  const article3Slug = await checkAndAdjustSlug(base44, generateSlug(`${categoryLabel} köpguide Amazon`));
+  const article3Slug = await checkAndAdjustSlug(base44, generateSlug(`${categoryLabel} prisrapport Amazon`));
   articles.push({
-    title: `${categoryLabel}-guide: Sådan hittar du bästa deals på Amazon`,
+    title: `${categoryLabel}-prisrapport: April 2026 – Prisdata från Amazon.se`,
     slug: article3Slug,
-    content: article3Response,
-    excerpt: article3Response.substring(0, 150),
+    content: article3Response + DISCLAIMER,
+    excerpt: `Månadsrapport om prisutvecklingen för ${rotatedCategory} på Amazon.se. Vilka produkter är billiga nu?`,
     category: rotatedCategory,
     products_mentioned: categoryProducts.map(p => p.asin).join(","),
-    seo_title: `${categoryLabel} på Amazon - Köpguide & pristips | PrisJägaren`,
-    seo_description: `Komplett köpguide för ${rotatedCategory} på Amazon.se. Spara pengar och hitta bästa deals.`,
+    seo_title: `${categoryLabel} prisrapport April 2026 - Amazon.se | PrisJägaren`,
+    seo_description: `Månadsrapport: Prisdata för ${rotatedCategory} på Amazon.se. Se vilka produkter som är billiga just nu.`,
     featured_image_url: categoryProducts[0]?.image_url || null,
   });
 
