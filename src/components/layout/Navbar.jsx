@@ -9,7 +9,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const links = [
-    { to: "/", label: "Bevakningar", icon: Eye },
+    { to: "/dashboard", label: "Bevakningar", icon: Eye },
     { to: "/add", label: "Lägg till", icon: Plus },
   ];
 
@@ -19,7 +19,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2.5 group">
+          <Link to="/dashboard" className="flex items-center gap-2.5 group">
             <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
               <TrendingDown className="w-5 h-5 text-primary-foreground" />
             </div>

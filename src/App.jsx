@@ -1,18 +1,20 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import AppLayout from '@/components/layout/AppLayout';
 import InstallPrompt from '@/components/InstallPrompt';
+import LandingPage from '@/pages/LandingPage';
 import Dashboard from '@/pages/Dashboard';
 import AddProduct from '@/pages/AddProduct';
 import ProductDetail from '@/pages/ProductDetail';
+
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
@@ -22,22 +24,34 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
-    }
+  if (authError?.type === 'user_not_registered') {
+    return <UserNotRegisteredError />;
   }
 
   return (
     <Routes>
+      {/* Public landing page — redirect to dashboard if logged in */}
+      <Route
+        path="/"
+        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />}
+      />
+
+      {/* Authenticated app routes */}
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/add" element={<AddProduct />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
+        <Route
+          path="/dashboard"
+          element={isAuthenticated ? <Dashboard /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/add"
+          element={isAuthenticated ? <AddProduct /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/product/:id"
+          element={isAuthenticated ? <ProductDetail /> : <Navigate to="/" replace />}
+        />
       </Route>
+
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

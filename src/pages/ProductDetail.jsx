@@ -75,7 +75,7 @@ export default function ProductDetail() {
     return (
       <div className="text-center py-20">
         <h2 className="text-xl font-bold mb-2">Produkten hittades inte</h2>
-        <Link to="/">
+        <Link to="/dashboard">
           <Button variant="outline">Tillbaka</Button>
         </Link>
       </div>
@@ -90,7 +90,7 @@ export default function ProductDetail() {
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
+        <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
           <ArrowLeft className="w-4 h-4" />
           Tillbaka
         </Link>
