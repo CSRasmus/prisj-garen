@@ -9,39 +9,32 @@ Deno.serve(async (req) => {
     const { product_id, asin, title } = await req.json();
     if (!asin) return Response.json({ error: 'ASIN required' }, { status: 400 });
 
-    console.log(`Fetching price for ASIN: ${asin}, product_id: ${product_id}`);
+    console.log(`Fetching price for ASIN: ${asin}`);
 
-    let priceData;
-    try {
-      priceData = await base44.integrations.Core.InvokeLLM({
-        prompt: `What is the current price in SEK for Amazon product with ASIN ${asin} on amazon.se? Product title: "${title}". Return only a JSON object with: { "price": number, "currency": "SEK", "found": true }. If you cannot find the price, return { "found": false, "price": 0, "currency": "SEK" }.`,
-        add_context_from_internet: true,
-        model: "gemini_3_flash",
-        response_json_schema: {
-          type: "object",
-          properties: {
-            price: { type: "number" },
-            currency: { type: "string" },
-            found: { type: "boolean" }
-          },
-          required: ["price", "currency", "found"]
-        }
-      });
-    } catch (llmError) {
-      console.error("LLM error:", llmError.message);
-      return Response.json({ found: false, error: llmError.message });
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `Search amazon.se for the product with ASIN ${asin}. Find the exact current price listed on the product page right now. Return ONLY a JSON object with exactly these fields: { price: number, currency: string }. Example: { price: 299.00, currency: "SEK" }. Do not include any other text.`,
+      add_context_from_internet: true,
+      model: "gemini_3_flash",
+      response_json_schema: {
+        type: "object",
+        properties: {
+          price: { type: "number" },
+          currency: { type: "string" }
+        },
+        required: ["price", "currency"]
+      }
+    });
+
+    console.log("LLM result:", JSON.stringify(result));
+
+    if (!result || typeof result.price !== "number" || result.price <= 0) {
+      console.error("Invalid price result:", result);
+      return Response.json({ error: "Could not find a valid price for this product" }, { status: 422 });
     }
 
-    console.log("LLM response:", JSON.stringify(priceData));
-
-    if (!priceData || priceData.found === false || !priceData.price || priceData.price <= 0) {
-      console.log("Price not found or invalid");
-      return Response.json({ found: false, error: 'Could not find price for this product' });
-    }
-
+    const price = result.price;
+    const currency = result.currency || "SEK";
     const now = new Date().toISOString();
-    const price = priceData.price;
-    const currency = priceData.currency || "SEK";
 
     if (product_id) {
       await base44.entities.PriceHistory.create({
@@ -52,11 +45,10 @@ Deno.serve(async (req) => {
       });
 
       const history = await base44.entities.PriceHistory.filter({ product_id }, "-checked_at", 90);
-      const prices = history.map(h => h.price).filter(p => p != null && p > 0);
+      const prices = history.map(h => h.price).filter(p => typeof p === "number" && p > 0);
       const lowestPrice = prices.length > 0 ? Math.min(...prices) : price;
       const highestPrice = prices.length > 0 ? Math.max(...prices) : price;
-      const range = highestPrice - lowestPrice;
-      const isLowPrice = range > 0 ? ((price - lowestPrice) / range) <= 0.15 : false;
+      const isLowPrice = price <= lowestPrice * 1.05;
 
       await base44.entities.Product.update(product_id, {
         current_price: price,
@@ -67,12 +59,12 @@ Deno.serve(async (req) => {
         last_checked: now
       });
 
-      console.log(`Updated product ${product_id} with price ${price} ${currency}`);
+      console.log(`Updated product ${product_id}: price=${price}, lowest=${lowestPrice}, highest=${highestPrice}, isLow=${isLowPrice}`);
     }
 
-    return Response.json({ success: true, price, currency, found: true });
+    return Response.json({ success: true, price, currency });
   } catch (error) {
-    console.error("Unexpected error:", error.message);
+    console.error("fetchProductPrice error:", error.message, error.stack);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
