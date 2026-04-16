@@ -59,29 +59,48 @@ async function fetchAndSavePrice(base44, product) {
 
   await base44.asServiceRole.entities.Product.update(product.id, updateData);
 
-  // Send email if low price and notifications enabled
-  if (isLowPrice && product.notify_on_drop && product.created_by) {
-    const appUrl = `https://priskoll.base44.app/product/${product.id}`;
-    await base44.asServiceRole.integrations.Core.SendEmail({
-      to: product.created_by,
-      subject: `🔥 Lågt pris på ${product.title}!`,
-      body: `
-        <div style="font-family: sans-serif; max-width: 600px;">
-          <h2 style="color: #2d9a5f;">🔥 Lågt pris på ${product.title}!</h2>
-          <p>Priset har sjunkit till ett lågt nivå!</p>
-          <table style="border-collapse: collapse; margin: 16px 0;">
-            <tr><td style="padding: 4px 12px 4px 0; color: #666;">Nuvarande pris:</td><td style="font-weight: bold; font-size: 1.2em; color: #2d9a5f;">${price} ${currency}</td></tr>
-            <tr><td style="padding: 4px 12px 4px 0; color: #666;">Lägst 90 dagar:</td><td>${lowestPrice} ${currency}</td></tr>
-            <tr><td style="padding: 4px 12px 4px 0; color: #666;">Högst 90 dagar:</td><td>${highestPrice} ${currency}</td></tr>
-          </table>
-          <a href="${appUrl}" style="display: inline-block; background: #2d9a5f; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; margin-top: 8px;">Visa i PrisKoll →</a>
-          <p style="color: #aaa; font-size: 12px; margin-top: 24px;">PrisKoll – Din prisbevakning för Amazon.se</p>
-        </div>
-      `
-    });
+  // Send email if low price, notifications enabled, and not already notified within 24h
+  const shouldNotify = isLowPrice && product.notify_on_drop && product.created_by;
+  let notified = false;
+
+  if (shouldNotify) {
+    const lastNotified = product.last_notified ? new Date(product.last_notified) : null;
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const alreadyNotifiedRecently = lastNotified && lastNotified > twentyFourHoursAgo;
+
+    if (!alreadyNotifiedRecently) {
+      const appUrl = `https://priskoll.base44.app/product/${product.id}`;
+      const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`;
+      await base44.asServiceRole.integrations.Core.SendEmail({
+        to: product.created_by,
+        subject: `🔥 Lågt pris på ${product.title}!`,
+        body: `
+          <div style="font-family: sans-serif; max-width: 600px; color: #222;">
+            <h2 style="color: #2d9a5f;">🔥 Lågt pris på ${product.title}!</h2>
+            <p>Priset har sjunkit till en rekordlåg nivå de senaste 90 dagarna!</p>
+            <table style="border-collapse: collapse; margin: 16px 0;">
+              <tr><td style="padding: 4px 12px 4px 0; color: #666;">Nuvarande pris:</td><td style="font-weight: bold; font-size: 1.2em; color: #2d9a5f;">${price} ${currency}</td></tr>
+              <tr><td style="padding: 4px 12px 4px 0; color: #666;">Lägst 90 dagar:</td><td>${lowestPrice} ${currency}</td></tr>
+              <tr><td style="padding: 4px 12px 4px 0; color: #666;">Högst 90 dagar:</td><td>${highestPrice} ${currency}</td></tr>
+            </table>
+            <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+              <a href="${amazonUrl}" style="display: inline-block; background: #2d9a5f; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Köp nu på Amazon →</a>
+              <a href="${appUrl}" style="display: inline-block; background: #f0f0f0; color: #333; padding: 12px 24px; border-radius: 8px; text-decoration: none;">Visa i PrisKoll</a>
+            </div>
+            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">PrisKoll – Din prisbevakning för Amazon.se</p>
+          </div>
+        `
+      });
+      // Save last_notified to prevent spam
+      await base44.asServiceRole.entities.Product.update(product.id, { last_notified: now });
+      notified = true;
+      console.log(`Notified ${product.created_by} about low price on ${product.asin}`);
+    } else {
+      console.log(`Skipping notification for ${product.asin} — already notified within 24h`);
+    }
   }
 
-  return { price, isLowPrice, notified: isLowPrice && product.notify_on_drop };
+  return { price, isLowPrice, notified };
 }
 
 Deno.serve(async (req) => {

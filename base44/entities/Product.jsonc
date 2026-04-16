@@ -49,6 +49,11 @@
       "type": "boolean",
       "default": true,
       "description": "Whether to send email notification on price drop"
+    },
+    "last_notified": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time a price drop notification was sent"
     }
   },
   "required": [
