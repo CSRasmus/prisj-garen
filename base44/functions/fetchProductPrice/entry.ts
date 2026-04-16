@@ -9,20 +9,33 @@ Deno.serve(async (req) => {
     const { product_id, asin, title } = await req.json();
     if (!asin) return Response.json({ error: 'ASIN required' }, { status: 400 });
 
-    const priceData = await base44.integrations.Core.InvokeLLM({
-      prompt: `What is the current price in SEK for the Amazon.se product with ASIN ${asin}? Product title: "${title}". Return the numeric price in SEK, the currency code, and whether you found it. If you cannot find the exact price, return found: false.`,
-      add_context_from_internet: true,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          price: { type: "number" },
-          currency: { type: "string" },
-          found: { type: "boolean" }
-        }
-      }
-    });
+    console.log(`Fetching price for ASIN: ${asin}, product_id: ${product_id}`);
 
-    if (!priceData.found || !priceData.price) {
+    let priceData;
+    try {
+      priceData = await base44.integrations.Core.InvokeLLM({
+        prompt: `What is the current price in SEK for Amazon product with ASIN ${asin} on amazon.se? Product title: "${title}". Return only a JSON object with: { "price": number, "currency": "SEK", "found": true }. If you cannot find the price, return { "found": false, "price": 0, "currency": "SEK" }.`,
+        add_context_from_internet: true,
+        model: "gemini_3_flash",
+        response_json_schema: {
+          type: "object",
+          properties: {
+            price: { type: "number" },
+            currency: { type: "string" },
+            found: { type: "boolean" }
+          },
+          required: ["price", "currency", "found"]
+        }
+      });
+    } catch (llmError) {
+      console.error("LLM error:", llmError.message);
+      return Response.json({ found: false, error: llmError.message });
+    }
+
+    console.log("LLM response:", JSON.stringify(priceData));
+
+    if (!priceData || priceData.found === false || !priceData.price || priceData.price <= 0) {
+      console.log("Price not found or invalid");
       return Response.json({ found: false, error: 'Could not find price for this product' });
     }
 
@@ -30,7 +43,6 @@ Deno.serve(async (req) => {
     const price = priceData.price;
     const currency = priceData.currency || "SEK";
 
-    // Save price history entry
     if (product_id) {
       await base44.entities.PriceHistory.create({
         product_id,
@@ -39,12 +51,10 @@ Deno.serve(async (req) => {
         checked_at: now
       });
 
-      // Fetch 90-day history for stats
       const history = await base44.entities.PriceHistory.filter({ product_id }, "-checked_at", 90);
-      const prices = history.map(h => h.price).filter(p => p != null);
+      const prices = history.map(h => h.price).filter(p => p != null && p > 0);
       const lowestPrice = prices.length > 0 ? Math.min(...prices) : price;
       const highestPrice = prices.length > 0 ? Math.max(...prices) : price;
-
       const range = highestPrice - lowestPrice;
       const isLowPrice = range > 0 ? ((price - lowestPrice) / range) <= 0.15 : false;
 
@@ -56,10 +66,13 @@ Deno.serve(async (req) => {
         is_low_price: isLowPrice,
         last_checked: now
       });
+
+      console.log(`Updated product ${product_id} with price ${price} ${currency}`);
     }
 
-    return Response.json({ price, currency, found: true });
+    return Response.json({ success: true, price, currency, found: true });
   } catch (error) {
+    console.error("Unexpected error:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
