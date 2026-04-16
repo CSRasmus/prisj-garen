@@ -1,0 +1,58 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Product title from Amazon"
+    },
+    "asin": {
+      "type": "string",
+      "description": "Amazon Standard Identification Number"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Product image URL"
+    },
+    "amazon_url": {
+      "type": "string",
+      "description": "Original Amazon product URL"
+    },
+    "current_price": {
+      "type": "number",
+      "description": "Current price in SEK"
+    },
+    "currency": {
+      "type": "string",
+      "default": "SEK",
+      "description": "Price currency"
+    },
+    "lowest_price_90d": {
+      "type": "number",
+      "description": "Lowest price in last 90 days"
+    },
+    "highest_price_90d": {
+      "type": "number",
+      "description": "Highest price in last 90 days"
+    },
+    "is_low_price": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether current price is considered low"
+    },
+    "last_checked": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time the price was checked"
+    },
+    "notify_on_drop": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to send email notification on price drop"
+    }
+  },
+  "required": [
+    "title",
+    "asin"
+  ]
+}

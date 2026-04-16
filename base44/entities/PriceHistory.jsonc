@@ -1,0 +1,27 @@
+{
+  "name": "PriceHistory",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "description": "Reference to the Product entity"
+    },
+    "price": {
+      "type": "number",
+      "description": "Price at this point in time"
+    },
+    "currency": {
+      "type": "string",
+      "default": "SEK"
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this price was recorded"
+    }
+  },
+  "required": [
+    "product_id",
+    "price"
+  ]
+}
