@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
@@ -14,14 +14,17 @@ import { Plus, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReferralCard from "@/components/referral/ReferralCard";
 import { getMaxProducts } from "@/lib/shareUtils";
+import OnboardingModal from "@/components/onboarding/OnboardingModal";
+import { AnimatePresence } from "framer-motion";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showCelebration, setShowCelebration] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
   }, []);
 
@@ -57,7 +60,17 @@ export default function Dashboard() {
   }
 
   if (products.length === 0) {
-    return <EmptyWatchlist />;
+    const alreadyShown = localStorage.getItem("onboarding_shown");
+    return (
+      <>
+        <EmptyWatchlist />
+        <AnimatePresence>
+          {!alreadyShown && (
+            <OnboardingModal onClose={() => setShowOnboarding(false)} />
+          )}
+        </AnimatePresence>
+      </>
+    );
   }
 
   const lowPriceCount = products.filter((p) => p.is_low_price).length;

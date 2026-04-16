@@ -22,6 +22,11 @@
       "type": "number",
       "default": 0,
       "description": "Number of users referred by this user"
+    },
+    "welcome_email_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the welcome email has been sent to this user"
     }
   },
   "required": [
