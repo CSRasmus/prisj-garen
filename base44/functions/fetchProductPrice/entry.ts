@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     });
 
     if (!priceData.found || !priceData.price) {
-      return Response.json({ error: 'Could not find price for this product' }, { status: 404 });
+      return Response.json({ found: false, error: 'Could not find price for this product' });
     }
 
     const now = new Date().toISOString();

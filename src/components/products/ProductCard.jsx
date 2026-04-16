@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Trash2, Bell, BellOff, Package, RefreshCw, Clock } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
 import PriceBadge from "./PriceBadge";
@@ -20,10 +20,12 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
     e.stopPropagation();
     setRefreshing(true);
     const prevLow = product.is_low_price;
-    await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
-    await queryClient.invalidateQueries({ queryKey: ["products"] });
-    const updated = queryClient.getQueryData(["products"])?.find(p => p.id === product.id);
-    if (updated?.is_low_price && !prevLow) onPriceDrop?.();
+    try {
+      await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      const updated = queryClient.getQueryData(["products"])?.find(p => p.id === product.id);
+      if (updated?.is_low_price && !prevLow) onPriceDrop?.();
+    } catch (_) {}
     setRefreshing(false);
   };
 
