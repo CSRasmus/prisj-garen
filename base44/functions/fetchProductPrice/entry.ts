@@ -9,13 +9,25 @@ Deno.serve(async (req) => {
     const { product_id, asin, title } = await req.json();
     if (!asin) return Response.json({ error: 'ASIN required' }, { status: 400 });
 
-    console.log(`Fetching price for ASIN: ${asin}`);
+    console.log(`Fetching price for ASIN: ${asin}, title: ${title}`);
 
-    // Use text response (no response_json_schema) since gemini_3_flash + internet can return null with schema
+    // Search Swedish price comparison sites (prisjakt, pricespy) which index Amazon.se prices
+    // These are not Cloudflare-protected and are accessible to LLM web search
     const rawText = await base44.integrations.Core.InvokeLLM({
-      prompt: `Go to amazon.se and search for the product with ASIN ${asin} (title: "${title}"). Find the current price shown on the product page. Respond with ONLY a JSON object like this: {"price": 299.00, "currency": "SEK"}. No other text, just the JSON.`,
+      prompt: `Search for the current price of this product on Swedish price comparison sites.
+Product: "${title}"
+Amazon ASIN: ${asin}
+
+Search on prisjakt.nu or prispy.se or google.se for: "${title} prisjakt" or "${title} pricespy"
+Find the current Amazon.se price for this exact product.
+
+Respond with ONLY this JSON (no markdown, no extra text):
+{"price": 1299.00, "currency": "SEK", "source": "prisjakt"}
+
+If you cannot find the price, respond:
+{"price": 0, "currency": "SEK", "source": "not_found"}`,
       add_context_from_internet: true,
-      model: "gemini_3_flash"
+      model: "gemini_3_1_pro"
     });
 
     console.log("LLM raw response:", rawText);
@@ -24,25 +36,28 @@ Deno.serve(async (req) => {
       throw new Error("LLM returned empty response");
     }
 
-    // Parse JSON from the text response
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    // Extract JSON - handle markdown code blocks too
+    const cleaned = String(rawText).replace(/```json\n?|\n?```/g, '').trim();
+    const jsonMatch = cleaned.match(/\{[^{}]*\}/);
     if (!jsonMatch) {
-      console.error("No JSON found in response:", rawText);
-      throw new Error("Could not parse price from LLM response");
+      console.error("No JSON in response:", rawText);
+      throw new Error("Could not parse price from response");
     }
 
     const result = JSON.parse(jsonMatch[0]);
-    console.log("Parsed result:", JSON.stringify(result));
+    console.log("Parsed:", JSON.stringify(result));
 
     const price = parseFloat(result.price);
     if (!price || price <= 0) {
-      throw new Error(`Invalid price value: ${result.price}`);
+      throw new Error(`Priset hittades inte för ASIN ${asin}`);
     }
 
     const currency = result.currency || "SEK";
     const now = new Date().toISOString();
 
     if (product_id) {
+      console.log(`Saving price ${price} ${currency} for product ${product_id}`);
+
       await base44.entities.PriceHistory.create({
         product_id,
         price,
@@ -65,7 +80,7 @@ Deno.serve(async (req) => {
         last_checked: now
       });
 
-      console.log(`Updated product ${product_id}: price=${price} ${currency}, isLow=${isLowPrice}`);
+      console.log(`Done. price=${price} ${currency} isLow=${isLowPrice}`);
     }
 
     return Response.json({ success: true, price, currency });
