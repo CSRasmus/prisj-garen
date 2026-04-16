@@ -8,7 +8,23 @@ const ninetyDaysAgo = () => {
   return d;
 };
 
-async function fetchAndSavePrice(base44, product) {
+// Save to GlobalPriceHistory — one entry per ASIN per day
+async function saveToGlobalHistory(base44, asin, price, currency, now) {
+  const today = now.substring(0, 10);
+  const existing = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+    { asin, amazon_domain: "amazon.se" }, "-checked_at", 5
+  );
+  const alreadySavedToday = existing.some(h => h.checked_at?.substring(0, 10) === today);
+  if (!alreadySavedToday) {
+    await base44.asServiceRole.entities.GlobalPriceHistory.create({
+      asin, price, currency, checked_at: now, amazon_domain: "amazon.se"
+    });
+    return true;
+  }
+  return false;
+}
+
+async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
   const url = `https://api.rainforestapi.com/request?api_key=${RAINFOREST_API_KEY}&type=product&asin=${product.asin}&amazon_domain=amazon.se&include_price_history=true`;
   const response = await fetch(url);
   const data = await response.json();
@@ -25,7 +41,36 @@ async function fetchAndSavePrice(base44, product) {
   const now = new Date().toISOString();
   const cutoff = ninetyDaysAgo();
 
-  // Import historical data from Rainforest
+  // Save to GlobalPriceHistory (deduplicated per ASIN per day)
+  if (!globalUpdatedAsins.has(product.asin)) {
+    const saved = await saveToGlobalHistory(base44, product.asin, price, currency, now);
+    if (saved) globalUpdatedAsins.add(product.asin);
+  }
+
+  // Import historical data from Rainforest into GlobalPriceHistory (once per ASIN per run)
+  if (!globalUpdatedAsins.has(`hist:${product.asin}`)) {
+    const rawHistory = (p.price_history || []).filter(h => h.date && h.price && new Date(h.date) >= cutoff);
+    if (rawHistory.length > 0) {
+      const existingGlobal = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+        { asin: product.asin, amazon_domain: "amazon.se" }, "-checked_at", 500
+      );
+      const existingGlobalDates = new Set(existingGlobal.map(h => h.checked_at?.substring(0, 10)));
+      for (const point of rawHistory) {
+        if (!existingGlobalDates.has(point.date?.substring(0, 10))) {
+          await base44.asServiceRole.entities.GlobalPriceHistory.create({
+            asin: product.asin,
+            price: parseFloat(point.price),
+            currency,
+            checked_at: new Date(point.date).toISOString(),
+            amazon_domain: "amazon.se",
+          });
+        }
+      }
+    }
+    globalUpdatedAsins.add(`hist:${product.asin}`);
+  }
+
+  // Save to user's PriceHistory
   const rawHistory = (p.price_history || []).filter(h => h.date && h.price && new Date(h.date) >= cutoff);
   const existingHistory = await base44.asServiceRole.entities.PriceHistory.filter({ product_id: product.id }, "-checked_at", 500);
   const existingDates = new Set(existingHistory.map(h => h.checked_at?.substring(0, 10)));
@@ -39,17 +84,13 @@ async function fetchAndSavePrice(base44, product) {
       checked_at: new Date(point.date).toISOString(),
     });
   }
-
-  // Add today's price
   await base44.asServiceRole.entities.PriceHistory.create({ product_id: product.id, price, currency, checked_at: now });
 
-  // Compute 90d stats
-  const allPrices = [
-    ...existingHistory.map(h => h.price),
-    ...newPoints.map(pt => parseFloat(pt.price)),
-    price
-  ].filter(v => v > 0);
-
+  // Compute 90d stats from GlobalPriceHistory for this ASIN
+  const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+    { asin: product.asin, amazon_domain: "amazon.se" }, "-checked_at", 500
+  );
+  const allPrices = [...globalHistory.map(h => h.price), price].filter(v => v > 0);
   const lowestPrice = Math.min(...allPrices);
   const highestPrice = Math.max(...allPrices);
   const isLowPrice = price <= lowestPrice * 1.05;
@@ -62,8 +103,6 @@ async function fetchAndSavePrice(base44, product) {
   // Determine trigger: target price OR automatic low-price logic
   const hasTargetPrice = product.target_price && product.target_price > 0;
   const priceTrigger = hasTargetPrice ? price <= product.target_price : isLowPrice;
-
-  // Send email if triggered, notifications enabled, and not already notified within 24h
   const shouldNotify = priceTrigger && product.notify_on_drop && product.created_by;
   let notified = false;
 
@@ -74,7 +113,7 @@ async function fetchAndSavePrice(base44, product) {
 
     if (!alreadyNotifiedRecently) {
       const appUrl = `https://priskoll.base44.app/product/${product.id}`;
-      const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`; // affiliate tag synced with affiliateUtils.js
+      const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`;
       const shareText = encodeURIComponent(`🔥 Prisfall på Amazon!\n\n${product.title} är nu ${price} kr!\n\nHitta fler deals: https://priskoll.base44.app`);
       const whatsappUrl = `https://wa.me/?text=${shareText}`;
       const smsUrl = `sms:?body=${shareText}`;
@@ -103,7 +142,6 @@ async function fetchAndSavePrice(base44, product) {
           </div>
         `
       });
-      // Save last_notified to prevent spam
       await base44.asServiceRole.entities.Product.update(product.id, { last_notified: now });
       notified = true;
       console.log(`Notified ${product.created_by} about low price on ${product.asin}`);
@@ -127,10 +165,11 @@ Deno.serve(async (req) => {
 
     let updated = 0;
     const errors = [];
+    const globalUpdatedAsins = new Set(); // Track which ASINs already got GlobalPriceHistory update this run
 
     for (const product of products) {
       try {
-        await fetchAndSavePrice(base44, product);
+        await fetchAndSavePrice(base44, product, globalUpdatedAsins);
         updated++;
         console.log(`Updated ${product.asin} (${updated}/${products.length})`);
       } catch (err) {

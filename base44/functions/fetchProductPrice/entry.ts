@@ -8,6 +8,38 @@ const ninetyDaysAgo = () => {
   return d;
 };
 
+// Save to GlobalPriceHistory — one entry per ASIN per day
+async function saveToGlobalHistory(base44, asin, price, currency, now) {
+  const today = now.substring(0, 10);
+  const existing = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+    { asin, amazon_domain: "amazon.se" }, "-checked_at", 5
+  );
+  const alreadySavedToday = existing.some(h => h.checked_at?.substring(0, 10) === today);
+  if (!alreadySavedToday) {
+    await base44.asServiceRole.entities.GlobalPriceHistory.create({
+      asin, price, currency, checked_at: now, amazon_domain: "amazon.se"
+    });
+  }
+}
+
+// Bulk-insert historical points into GlobalPriceHistory (deduped by day)
+async function seedGlobalHistory(base44, asin, rawHistory, currency) {
+  const existingGlobal = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+    { asin, amazon_domain: "amazon.se" }, "-checked_at", 500
+  );
+  const existingGlobalDates = new Set(existingGlobal.map(h => h.checked_at?.substring(0, 10)));
+  const newGlobal = rawHistory.filter(h => !existingGlobalDates.has(h.date?.substring(0, 10)));
+  for (const point of newGlobal) {
+    await base44.asServiceRole.entities.GlobalPriceHistory.create({
+      asin,
+      price: parseFloat(point.price),
+      currency,
+      checked_at: new Date(point.date).toISOString(),
+      amazon_domain: "amazon.se",
+    });
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -48,11 +80,16 @@ Deno.serve(async (req) => {
 
     console.log(`Got ${rawHistory.length} historical price points from Rainforest`);
 
-    // Fetch existing history to avoid duplicates
+    // Save historical points to GlobalPriceHistory (deduped)
+    await seedGlobalHistory(base44, asin, rawHistory, currency);
+
+    // Save today's price to GlobalPriceHistory
+    await saveToGlobalHistory(base44, asin, price, currency, now);
+
+    // Save to user's PriceHistory
     const existingHistory = await base44.entities.PriceHistory.filter({ product_id }, "-checked_at", 500);
     const existingDates = new Set(existingHistory.map(h => h.checked_at?.substring(0, 10)));
 
-    // Insert missing historical data points
     const newPoints = rawHistory.filter(h => !existingDates.has(h.date?.substring(0, 10)));
     for (const point of newPoints) {
       await base44.entities.PriceHistory.create({
@@ -62,18 +99,14 @@ Deno.serve(async (req) => {
         checked_at: new Date(point.date).toISOString(),
       });
     }
+    await base44.entities.PriceHistory.create({ product_id, price, currency, checked_at: now });
     console.log(`Inserted ${newPoints.length} new historical price points`);
 
-    // Add today's price
-    await base44.entities.PriceHistory.create({ product_id, price, currency, checked_at: now });
-
-    // Compute 90d stats from all available data
-    const allPrices = [
-      ...existingHistory.map(h => h.price),
-      ...newPoints.map(p => parseFloat(p.price)),
-      price
-    ].filter(p => p > 0);
-
+    // Compute 90d stats from all available global data for this ASIN
+    const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+      { asin, amazon_domain: "amazon.se" }, "-checked_at", 500
+    );
+    const allPrices = [...globalHistory.map(h => h.price), price].filter(p => p > 0);
     const lowestPrice = Math.min(...allPrices);
     const highestPrice = Math.max(...allPrices);
     const isLowPrice = price <= lowestPrice * 1.05;

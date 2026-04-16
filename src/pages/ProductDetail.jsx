@@ -41,9 +41,25 @@ export default function ProductDetail() {
   });
 
   const { data: priceHistory = [], isLoading: historyLoading } = useQuery({
-    queryKey: ["priceHistory", productId],
-    queryFn: () => base44.entities.PriceHistory.filter({ product_id: productId }, "-checked_at", 90),
-    enabled: !!productId,
+    queryKey: ["priceHistory", productId, product?.asin],
+    queryFn: async () => {
+      if (!product?.asin) return [];
+      const global = await base44.entities.GlobalPriceHistory.filter({ asin: product.asin }, "-checked_at", 365);
+      if (global.length > 0) return global.map(h => ({ ...h, product_id: productId }));
+      // Fallback to user's PriceHistory
+      return base44.entities.PriceHistory.filter({ product_id: productId }, "-checked_at", 365);
+    },
+    enabled: !!productId && !!product?.asin,
+  });
+
+  const { data: watcherCount = 1 } = useQuery({
+    queryKey: ["watcherCount", product?.asin],
+    queryFn: async () => {
+      if (!product?.asin) return 1;
+      const watchers = await base44.entities.Product.filter({ asin: product.asin });
+      return watchers.length;
+    },
+    enabled: !!product?.asin,
   });
 
   const handleRefreshPrice = async () => {
@@ -113,7 +129,14 @@ export default function ProductDetail() {
                   <PriceBadge status={status} />
                 </div>
                 <h1 className="text-xl sm:text-2xl font-bold mt-2 leading-tight">{product.title}</h1>
-                <p className="text-xs text-muted-foreground mt-1">ASIN: {product.asin}</p>
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  <p className="text-xs text-muted-foreground">ASIN: {product.asin}</p>
+                  {watcherCount > 1 && (
+                    <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-medium">
+                      👥 {watcherCount} personer bevakar denna produkt
+                    </span>
+                  )}
+                </div>
 
                 <div className="mt-4 flex items-baseline gap-3">
                   <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${status === "low" ? "text-primary" : ""}`}>
@@ -182,7 +205,9 @@ export default function ProductDetail() {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Prishistorik (90 dagar)</CardTitle>
+            <CardTitle className="text-base">
+              Prishistorik{priceHistory.length > 90 ? " (upp till 365 dagar)" : " (90 dagar)"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <PriceChart

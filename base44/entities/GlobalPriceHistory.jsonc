@@ -1,0 +1,31 @@
+{
+  "name": "GlobalPriceHistory",
+  "type": "object",
+  "properties": {
+    "asin": {
+      "type": "string",
+      "description": "Amazon ASIN \u2014 shared across all users"
+    },
+    "price": {
+      "type": "number",
+      "description": "Price at this point in time"
+    },
+    "currency": {
+      "type": "string",
+      "default": "SEK"
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this price was recorded"
+    },
+    "amazon_domain": {
+      "type": "string",
+      "default": "amazon.se"
+    }
+  },
+  "required": [
+    "asin",
+    "price"
+  ]
+}

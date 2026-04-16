@@ -88,7 +88,38 @@ export default function AddProduct() {
     onSuccess: async (created) => {
       setFetchingPrice(true);
       try {
-        await fetchProductPrice({ product_id: created.id, asin: created.asin, title: created.title });
+        // Check if GlobalPriceHistory already exists for this ASIN
+        const globalHistory = await base44.entities.GlobalPriceHistory.filter(
+          { asin: created.asin }, "-checked_at", 500
+        );
+
+        if (globalHistory.length > 0) {
+          // Seed user's PriceHistory from existing global data
+          for (const point of globalHistory) {
+            await base44.entities.PriceHistory.create({
+              product_id: created.id,
+              price: point.price,
+              currency: point.currency || "SEK",
+              checked_at: point.checked_at,
+            });
+          }
+          // Compute stats from global history
+          const prices = globalHistory.map(h => h.price).filter(p => p > 0);
+          const lowestPrice = Math.min(...prices);
+          const highestPrice = Math.max(...prices);
+          const latestPrice = globalHistory[0]?.price;
+          const isLowPrice = latestPrice <= lowestPrice * 1.05;
+          await base44.entities.Product.update(created.id, {
+            current_price: latestPrice,
+            currency: "SEK",
+            lowest_price_90d: lowestPrice,
+            highest_price_90d: highestPrice,
+            is_low_price: isLowPrice,
+            last_checked: globalHistory[0]?.checked_at,
+          });
+        } else {
+          await fetchProductPrice({ product_id: created.id, asin: created.asin, title: created.title });
+        }
       } catch (_) {
         toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
       }
