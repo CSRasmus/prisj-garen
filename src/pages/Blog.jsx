@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Helmet } from "react-helmet";
 
 const CATEGORIES = [
   { value: "all", label: "Alla" },
@@ -83,15 +82,7 @@ export default function Blog() {
   const paginatedArticles = articles.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <>
-      <Helmet>
-        <title>Amazon Deals & Pristips – Blogg | PrisJägaren</title>
-        <meta name="description" content="Läs våra senaste artiklar om Amazon deals, pristips och köpguider för Sverige." />
-        <meta property="og:title" content="Amazon Deals & Pristips – Blogg | PrisJägaren" />
-        <meta property="og:description" content="Läs våra senaste artiklar om Amazon deals, pristips och köpguider för Sverige." />
-      </Helmet>
-
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
         {/* Hero */}
         <section className="bg-gradient-to-br from-primary to-emerald-500 text-white py-16">
           <div className="max-w-4xl mx-auto px-4 text-center space-y-4">
@@ -173,6 +164,5 @@ export default function Blog() {
           </div>
         </section>
       </div>
-    </>
   );
 }

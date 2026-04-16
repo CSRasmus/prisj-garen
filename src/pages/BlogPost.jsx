@@ -4,8 +4,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Share2, Eye, MapPin } from "lucide-react";
-import { Helmet } from "react-helmet";
+import { ArrowLeft, Share2, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 
 function sanitizeHtml(html) {
@@ -82,16 +81,7 @@ export default function BlogPost() {
   }
 
   return (
-    <>
-      <Helmet>
-        <title>{post.seo_title || post.title} | PrisJägaren</title>
-        <meta name="description" content={post.seo_description || post.excerpt} />
-        <meta property="og:title" content={post.seo_title || post.title} />
-        <meta property="og:description" content={post.seo_description || post.excerpt} />
-        {post.featured_image_url && <meta property="og:image" content={post.featured_image_url} />}
-      </Helmet>
-
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
         <article className="py-10 px-4 sm:px-6">
           <div className="max-w-3xl mx-auto space-y-6">
             {/* Back button */}
@@ -232,6 +222,5 @@ export default function BlogPost() {
           </div>
         </article>
       </div>
-    </>
   );
 }
