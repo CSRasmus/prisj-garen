@@ -12,6 +12,7 @@ import { fetchProductPrice } from "@/functions/fetchProductPrice";
 import { lookupProduct } from "@/functions/lookupProduct";
 import { motion } from "framer-motion";
 import { getMaxProducts } from "@/lib/shareUtils";
+import { buildAmazonUrl } from "@/lib/affiliateUtils";
 
 function extractASIN(input) {
   const asinRegex = /(?:\/dp\/|\/gp\/product\/|\/ASIN\/)([A-Z0-9]{10})/i;
@@ -81,7 +82,7 @@ export default function AddProduct() {
         title,
         asin,
         image_url: imageUrl,
-        amazon_url: `https://www.amazon.se/dp/${asin}`,
+        amazon_url: buildAmazonUrl(asin),
         notify_on_drop: true,
       });
     },
