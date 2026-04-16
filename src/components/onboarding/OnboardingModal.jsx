@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
+import { X, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const STEPS = [
@@ -18,6 +18,12 @@ const STEPS = [
     cta: "Nästa →",
   },
   {
+    emoji: "📱",
+    title: "Spara som app på din telefon",
+    body: "PrisJägaren fungerar som en riktig app — utan App Store!",
+    cta: "Nästa →",
+  },
+  {
     emoji: null,
     title: "Redo att börja spara?",
     body: "Lägg till din första produkt nu — det tar 10 sekunder!",
@@ -31,17 +37,69 @@ const HOW_IT_WORKS = [
   { icon: "🔔", label: "Du får notis", desc: "Mail direkt vid prissänkning" },
 ];
 
+function detectOS() {
+  const ua = navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) return "ios";
+  if (/android/.test(ua)) return "android";
+  return "desktop";
+}
+
 export default function OnboardingModal({ onClose }) {
   const [step, setStep] = useState(0);
+  const [appInstalled, setAppInstalled] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushSupported, setPushSupported] = useState(typeof Notification !== "undefined");
   const navigate = useNavigate();
+  const os = detectOS();
 
   const dismiss = () => {
     localStorage.setItem("onboarding_shown", "true");
     onClose();
   };
 
+  const handleRequestNotification = async () => {
+    if (!("Notification" in window)) {
+      alert("Din webbläsare stöder inte push-notiser.");
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      setPushEnabled(true);
+      await savePushSubscription();
+      return;
+    }
+
+    if (Notification.permission === "denied") return;
+
+    const perm = await Notification.requestPermission();
+    if (perm === "granted") {
+      setPushEnabled(true);
+      await savePushSubscription();
+    }
+  };
+
+  const savePushSubscription = async () => {
+    try {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription() ||
+        await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: undefined,
+        });
+
+      const { base44 } = await import("@/api/base44Client");
+      await base44.entities.PushSubscription.create({
+        subscription_json: JSON.stringify(subscription),
+      });
+    } catch (err) {
+      console.error("Failed to save push subscription:", err);
+    }
+  };
+
   const handleCta = () => {
-    if (step < 2) {
+    if (step < 3) {
       setStep((s) => s + 1);
     } else {
       localStorage.setItem("onboarding_shown", "true");
@@ -132,6 +190,75 @@ export default function OnboardingModal({ onClose }) {
                     </div>
                   ))}
                 </div>
+              ) : step === 2 ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground text-center mb-4">
+                    {current.body}
+                  </p>
+
+                  {os === "ios" ? (
+                    <div className="bg-accent/20 rounded-xl p-4 space-y-3">
+                      <p className="text-sm font-semibold text-foreground">Safari på iPhone/iPad:</p>
+                      <ol className="space-y-2 text-sm text-foreground list-decimal list-inside">
+                        <li>Tryck på dela-ikonen längst ned</li>
+                        <li>Scrolla ned och tryck "Lägg till på hemskärmen"</li>
+                        <li>Tryck "Lägg till" — klart!</li>
+                      </ol>
+                    </div>
+                  ) : os === "android" ? (
+                    <div className="bg-accent/20 rounded-xl p-4 space-y-3">
+                      <p className="text-sm font-semibold text-foreground">Chrome på Android:</p>
+                      <ol className="space-y-2 text-sm text-foreground list-decimal list-inside">
+                        <li>Tryck på meny-ikonen ⋮ uppe till höger</li>
+                        <li>Tryck "Lägg till på startskärmen"</li>
+                        <li>Tryck "Lägg till" — klart!</li>
+                      </ol>
+                    </div>
+                  ) : (
+                    <div className="bg-muted/40 rounded-xl p-4 text-center">
+                      <p className="text-xs text-muted-foreground">Öppna denna sida på din telefon för installationsinstruktioner</p>
+                    </div>
+                  )}
+
+                  <label className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl cursor-pointer hover:bg-muted/60 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={appInstalled}
+                      onChange={(e) => setAppInstalled(e.target.checked)}
+                      className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm font-medium">Jag har installerat appen ✓</span>
+                  </label>
+                </div>
+              ) : step === 3 ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    {current.body}
+                  </p>
+
+                  {pushSupported && Notification.permission !== "denied" && (
+                    <Button
+                      variant={pushEnabled ? "default" : "outline"}
+                      className="w-full gap-2"
+                      onClick={handleRequestNotification}
+                      disabled={pushEnabled}
+                    >
+                      🔔 {pushEnabled ? "Push-notiser aktiverade ✅" : "Aktivera push-notiser"}
+                    </Button>
+                  )}
+
+                  {Notification.permission === "denied" && (
+                    <div className="p-3 bg-muted/40 rounded-xl text-center text-xs text-muted-foreground">
+                      Inga problem — du får notiser via e-post istället.
+                    </div>
+                  )}
+
+                  {!pushSupported && (
+                    <div className="p-3 bg-muted/40 rounded-xl text-center text-xs text-muted-foreground">
+                      Din webbläsare stöder inte push-notiser ännu. Du får notiser via e-post.
+                    </div>
+                  )}
+                </div>
               ) : (
                 current.body && (
                   <p className="text-muted-foreground text-sm leading-relaxed text-center">
@@ -149,7 +276,7 @@ export default function OnboardingModal({ onClose }) {
             {current.cta}
           </Button>
 
-          {step === 2 && (
+          {step === 3 && (
             <button
               onClick={dismiss}
               className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"

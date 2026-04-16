@@ -1,0 +1,13 @@
+{
+  "name": "PushSubscription",
+  "type": "object",
+  "properties": {
+    "subscription_json": {
+      "type": "string",
+      "description": "JSON stringified web push subscription object"
+    }
+  },
+  "required": [
+    "subscription_json"
+  ]
+}

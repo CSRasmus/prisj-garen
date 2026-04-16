@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { X, Share, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import OnboardingModal from "@/components/onboarding/OnboardingModal";
 
 const STORAGE_KEY = "prisjagaren_install_dismissed";
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -17,6 +19,7 @@ export default function InstallPrompt() {
   const [visible, setVisible] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [ios, setIos] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     // Don't show if already installed
@@ -63,7 +66,10 @@ export default function InstallPrompt() {
 
   return (
     <AnimatePresence>
-      {visible && (
+      {showGuide && (
+        <OnboardingModal onClose={() => setShowGuide(false)} />
+      )}
+      {visible && !showGuide && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -94,15 +100,23 @@ export default function InstallPrompt() {
                 </p>
               )}
 
-              {!ios && (
+              <div className="mt-2 flex gap-2">
+                {!ios && (
+                  <button
+                    onClick={handleInstall}
+                    className="bg-white text-[#16a34a] text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-white/90 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Installera
+                  </button>
+                )}
                 <button
-                  onClick={handleInstall}
-                  className="mt-2 bg-white text-[#16a34a] text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-white/90 transition-colors"
+                  onClick={() => setShowGuide(true)}
+                  className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  Installera
+                  Visa mig hur
                 </button>
-              )}
+              </div>
             </div>
 
             {/* Close */}

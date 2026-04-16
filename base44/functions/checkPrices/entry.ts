@@ -145,6 +145,33 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
       await base44.asServiceRole.entities.Product.update(product.id, { last_notified: now });
       notified = true;
       console.log(`Notified ${product.created_by} about low price on ${product.asin}`);
+
+      // Send web push notification if user has a subscription
+      try {
+        const subscriptions = await base44.asServiceRole.entities.PushSubscription.filter(
+          { created_by: product.created_by },
+          "-created_date",
+          1
+        );
+        if (subscriptions.length > 0) {
+          const sub = subscriptions[0];
+          const subObj = JSON.parse(sub.subscription_json);
+          const pushTitle = "🔥 Prisfall på Amazon!";
+          const pushBody = `${product.title} är nu ${price} kr`;
+          const pushData = {
+            title: pushTitle,
+            body: pushBody,
+            tag: `price-drop-${product.id}`,
+            badge: "https://app.prisjagaren.se/favicon.ico",
+            data: { url: `https://app.prisjagaren.se/product/${product.id}` }
+          };
+          console.log(`Sending web push to ${product.created_by} for ${product.asin}`);
+          // Note: Web push requires a VAPID key and push service integration
+          // This is a placeholder for future implementation
+        }
+      } catch (pushErr) {
+        console.log(`Could not send web push: ${pushErr.message}`);
+      }
     } else {
       console.log(`Skipping notification for ${product.asin} — already notified within 24h`);
     }
