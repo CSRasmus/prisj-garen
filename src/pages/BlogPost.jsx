@@ -24,9 +24,8 @@ export default function BlogPost() {
       const posts = await base44.entities.BlogPost.filter({ slug, published: true }, "-created_date", 1);
       if (posts.length === 0) return null;
       const p = posts[0];
-      // Increment views
-      await base44.asServiceRole.entities.BlogPost.update(p.id, { views: (p.views || 0) + 1 });
-      queryClient.invalidateQueries({ queryKey: ["blogPost", slug] });
+      // Increment views (fire and forget to avoid re-fetching)
+      base44.asServiceRole.entities.BlogPost.update(p.id, { views: (p.views || 0) + 1 }).catch(() => {});
       return p;
     },
   });
