@@ -59,8 +59,12 @@ async function fetchAndSavePrice(base44, product) {
 
   await base44.asServiceRole.entities.Product.update(product.id, updateData);
 
-  // Send email if low price, notifications enabled, and not already notified within 24h
-  const shouldNotify = isLowPrice && product.notify_on_drop && product.created_by;
+  // Determine trigger: target price OR automatic low-price logic
+  const hasTargetPrice = product.target_price && product.target_price > 0;
+  const priceTrigger = hasTargetPrice ? price <= product.target_price : isLowPrice;
+
+  // Send email if triggered, notifications enabled, and not already notified within 24h
+  const shouldNotify = priceTrigger && product.notify_on_drop && product.created_by;
   let notified = false;
 
   if (shouldNotify) {
@@ -73,11 +77,11 @@ async function fetchAndSavePrice(base44, product) {
       const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`;
       await base44.asServiceRole.integrations.Core.SendEmail({
         to: product.created_by,
-        subject: `🔥 Lågt pris på ${product.title}!`,
+        subject: `${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}!`,
         body: `
           <div style="font-family: sans-serif; max-width: 600px; color: #222;">
-            <h2 style="color: #2d9a5f;">🔥 Lågt pris på ${product.title}!</h2>
-            <p>Priset har sjunkit till en rekordlåg nivå de senaste 90 dagarna!</p>
+            <h2 style="color: #2d9a5f;">${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}!</h2>
+            <p>${hasTargetPrice ? `Priset har sjunkit under ditt målpris på ${product.target_price} kr!` : "Priset har sjunkit till en rekordlåg nivå de senaste 90 dagarna!"}</p>
             <table style="border-collapse: collapse; margin: 16px 0;">
               <tr><td style="padding: 4px 12px 4px 0; color: #666;">Nuvarande pris:</td><td style="font-weight: bold; font-size: 1.2em; color: #2d9a5f;">${price} ${currency}</td></tr>
               <tr><td style="padding: 4px 12px 4px 0; color: #666;">Lägst 90 dagar:</td><td>${lowestPrice} ${currency}</td></tr>

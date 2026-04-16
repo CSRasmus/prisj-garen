@@ -3,6 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
+import PremiumModal from "@/components/premium/PremiumModal";
+import { usePremium } from "@/lib/usePremium";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,9 +28,11 @@ export default function AddProduct() {
   const [imageUrl, setImageUrl] = useState("");
   const [asin, setAsin] = useState(null);
   const [error, setError] = useState("");
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isPremium } = usePremium();
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
@@ -70,7 +74,7 @@ export default function AddProduct() {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      if (products.length >= 10) throw new Error("Max 10 produkter i bevakningslistan.");
+      if (!isPremium && products.length >= 10) throw new Error("Max 10 produkter i bevakningslistan.");
       return base44.entities.Product.create({
         title,
         asin,
@@ -101,10 +105,11 @@ export default function AddProduct() {
     lookupMutation.mutate(url);
   };
 
-  const atLimit = products.length >= 10;
+  const atLimit = !isPremium && products.length >= 10;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
+      <PremiumModal open={showPremiumModal} onClose={() => setShowPremiumModal(false)} reason="gränsen på 10 produkter (gratis)" />
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Lägg till produkt</h1>
         <p className="text-muted-foreground text-sm mt-1">
@@ -113,10 +118,15 @@ export default function AddProduct() {
       </motion.div>
 
       {atLimit && (
-        <Card className="border-destructive/30 bg-destructive/5">
+        <Card className="border-amber-300 bg-amber-50/50 dark:bg-amber-900/10">
           <CardContent className="p-4 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
-            <p className="text-sm">Du har nått maxgränsen på 10 produkter. Ta bort en produkt för att lägga till fler.</p>
+            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm">Du har nått maxgränsen på 10 produkter.</p>
+              <button className="text-xs text-amber-600 font-medium hover:underline mt-0.5" onClick={() => setShowPremiumModal(true)}>
+                Uppgradera till Premium för obegränsat antal →
+              </button>
+            </div>
           </CardContent>
         </Card>
       )}

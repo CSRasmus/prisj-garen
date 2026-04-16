@@ -54,6 +54,10 @@
       "type": "string",
       "format": "date-time",
       "description": "Last time a price drop notification was sent"
+    },
+    "target_price": {
+      "type": "number",
+      "description": "User-defined target price (premium feature). Null = use automatic 90-day logic."
     }
   },
   "required": [

@@ -1,0 +1,36 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "The role of the user in the app",
+      "enum": [
+        "admin",
+        "user"
+      ]
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the user has an active premium subscription"
+    },
+    "premium_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the premium subscription expires"
+    },
+    "phone_number": {
+      "type": "string",
+      "description": "Phone number for SMS notifications"
+    },
+    "sms_notifications": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to send SMS notifications (premium only)"
+    }
+  },
+  "required": [
+    "role"
+  ]
+}

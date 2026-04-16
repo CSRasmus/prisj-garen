@@ -1,16 +1,19 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { TrendingDown, Eye, Plus, Menu, X } from "lucide-react";
+import { TrendingDown, Eye, Plus, Menu, X, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePremium } from "@/lib/usePremium";
 
 export default function Navbar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const { isPremium } = usePremium();
 
   const links = [
     { to: "/", label: "Bevakningar", icon: Eye },
     { to: "/add", label: "Lägg till", icon: Plus },
+    { to: "/premium", label: "Premium", icon: Crown },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -24,6 +27,11 @@ export default function Navbar() {
               <TrendingDown className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-bold text-lg tracking-tight">PrisKoll</span>
+            {isPremium && (
+              <span className="hidden sm:flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+                <Crown className="w-3 h-3" /> Premium
+              </span>
+            )}
           </Link>
 
           <div className="hidden sm:flex items-center gap-1">
@@ -32,7 +40,7 @@ export default function Navbar() {
                 <Button
                   variant={isActive(link.to) ? "default" : "ghost"}
                   size="sm"
-                  className="gap-2"
+                  className={`gap-2 ${link.to === "/premium" && isPremium ? "text-amber-600" : ""}`}
                 >
                   <link.icon className="w-4 h-4" />
                   {link.label}
