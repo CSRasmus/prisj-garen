@@ -75,6 +75,9 @@ async function fetchAndSavePrice(base44, product) {
     if (!alreadyNotifiedRecently) {
       const appUrl = `https://priskoll.base44.app/product/${product.id}`;
       const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`; // affiliate tag synced with affiliateUtils.js
+      const shareText = encodeURIComponent(`🔥 Prisfall på Amazon!\n\n${product.title} är nu ${price} kr!\n\nHitta fler deals: https://priskoll.base44.app`);
+      const whatsappUrl = `https://wa.me/?text=${shareText}`;
+      const smsUrl = `sms:?body=${shareText}`;
       await base44.asServiceRole.integrations.Core.SendEmail({
         to: product.created_by,
         subject: `${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}!`,
@@ -89,9 +92,14 @@ async function fetchAndSavePrice(base44, product) {
             </table>
             <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
               <a href="${amazonUrl}" style="display: inline-block; background: #2d9a5f; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Köp nu på Amazon →</a>
-              <a href="${appUrl}" style="display: inline-block; background: #f0f0f0; color: #333; padding: 12px 24px; border-radius: 8px; text-decoration: none;">Visa i PrisKoll</a>
+              <a href="${appUrl}" style="display: inline-block; background: #f0f0f0; color: #333; padding: 12px 24px; border-radius: 8px; text-decoration: none;">Visa i PrisJägaren</a>
             </div>
-            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">PrisKoll – Din prisbevakning för Amazon.se</p>
+            <div style="margin-top: 24px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px; font-size: 14px; color: #555; font-weight: 600;">📣 Dela detta deal med en vän</p>
+              <a href="${whatsappUrl}" style="display: inline-block; background: #25D366; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px; margin-right: 8px;">WhatsApp</a>
+              <a href="${smsUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px;">SMS</a>
+            </div>
+            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">PrisJägaren – Din prisbevakning för Amazon.se</p>
           </div>
         `
       });

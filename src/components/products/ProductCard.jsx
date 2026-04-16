@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Trash2, Bell, BellOff, Package, RefreshCw, Clock } from "lucide-react";
+import ShareDealButton from "./ShareDealButton";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -122,6 +123,7 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
                   <span className="text-[10px] text-muted-foreground px-3 -mt-1">Via e-post</span>
                 )}
               </div>
+              <ShareDealButton product={product} />
               <Button
                 variant="ghost"
                 className="h-10 text-xs text-destructive hover:text-destructive gap-1.5 px-3"

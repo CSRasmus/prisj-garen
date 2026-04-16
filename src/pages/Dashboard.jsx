@@ -12,11 +12,18 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Plus, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ReferralCard from "@/components/referral/ReferralCard";
+import { getMaxProducts } from "@/lib/shareUtils";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showCelebration, setShowCelebration] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  React.useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -54,6 +61,7 @@ export default function Dashboard() {
   }
 
   const lowPriceCount = products.filter((p) => p.is_low_price).length;
+  const maxProducts = getMaxProducts(currentUser?.referred_count);
 
   return (
     <div className="space-y-6">
@@ -74,7 +82,7 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-        {products.length < 10 && (
+        {products.length < maxProducts && (
           <Link to="/add">
             <Button size="sm" variant="outline" className="gap-1.5 shrink-0">
               <Plus className="w-4 h-4" />
@@ -87,6 +95,8 @@ export default function Dashboard() {
       <StatsWidget products={products} />
 
       <DealsSection products={products} />
+
+      <ReferralCard user={currentUser} />
 
       <div className="space-y-3">
         {products.map((product, index) => (

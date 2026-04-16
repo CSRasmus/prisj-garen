@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +12,7 @@ import { Search, Plus, Loader2, Link2, AlertCircle } from "lucide-react";
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
 import { lookupProduct } from "@/functions/lookupProduct";
 import { motion } from "framer-motion";
+import { getMaxProducts } from "@/lib/shareUtils";
 
 function extractASIN(input) {
   const asinRegex = /(?:\/dp\/|\/gp\/product\/|\/ASIN\/)([A-Z0-9]{10})/i;
@@ -30,11 +32,16 @@ export default function AddProduct() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [currentUser, setCurrentUser] = React.useState(null);
+  React.useEffect(() => { base44.auth.me().then(setCurrentUser).catch(() => {}); }, []);
+
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
     queryFn: () => base44.entities.Product.list(),
     initialData: [],
   });
+
+  const maxProducts = getMaxProducts(currentUser?.referred_count);
 
   const lookupMutation = useMutation({
     mutationFn: async (input) => {
@@ -70,7 +77,7 @@ export default function AddProduct() {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      if (products.length >= 10) throw new Error("Max 10 produkter i bevakningslistan.");
+      if (products.length >= maxProducts) throw new Error(`Max ${maxProducts} produkter i bevakningslistan.`);
       return base44.entities.Product.create({
         title,
         asin,
@@ -89,7 +96,7 @@ export default function AddProduct() {
       setFetchingPrice(false);
       queryClient.invalidateQueries({ queryKey: ["products"] });
       toast({ title: "Produkt tillagd!", description: "Priset är nu hämtat och bevakning startar." });
-      navigate("/");
+      navigate("/dashboard");
     },
     onError: (err) => setError(err.message),
   });
@@ -101,7 +108,7 @@ export default function AddProduct() {
     lookupMutation.mutate(url);
   };
 
-  const atLimit = products.length >= 10;
+  const atLimit = products.length >= maxProducts;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -116,7 +123,7 @@ export default function AddProduct() {
         <Card className="border-border bg-muted/30">
           <CardContent className="p-4 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0" />
-            <p className="text-sm text-muted-foreground">Du har nått maxgränsen på 10 bevakade produkter.</p>
+            <p className="text-sm text-muted-foreground">Du har nått maxgränsen på {maxProducts} bevakade produkter. Värva fler vänner för att utöka!</p>
           </CardContent>
         </Card>
       )}

@@ -10,24 +10,18 @@
         "user"
       ]
     },
-    "is_premium": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether the user has an active premium subscription"
-    },
-    "premium_until": {
+    "referral_code": {
       "type": "string",
-      "format": "date-time",
-      "description": "When the premium subscription expires"
+      "description": "Unique referral code for this user"
     },
-    "phone_number": {
+    "referred_by": {
       "type": "string",
-      "description": "Phone number for SMS notifications"
+      "description": "Referral code of the user who referred this user"
     },
-    "sms_notifications": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether to send SMS notifications (premium only)"
+    "referred_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of users referred by this user"
     }
   },
   "required": [

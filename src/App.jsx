@@ -12,9 +12,23 @@ import LandingPage from '@/pages/LandingPage';
 import Dashboard from '@/pages/Dashboard';
 import AddProduct from '@/pages/AddProduct';
 import ProductDetail from '@/pages/ProductDetail';
+import { handleReferral } from '@/functions/handleReferral';
+
+// Capture referral code from URL and store in localStorage
+const params = new URLSearchParams(window.location.search);
+const refCode = params.get("ref");
+if (refCode) localStorage.setItem("prisjakare_ref", refCode);
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
+
+  React.useEffect(() => {
+    if (!isAuthenticated) return;
+    const savedRef = localStorage.getItem("prisjakare_ref");
+    handleReferral({ referral_code: savedRef || null })
+      .then(() => { if (savedRef) localStorage.removeItem("prisjakare_ref"); })
+      .catch(() => {});
+  }, [isAuthenticated]);
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (

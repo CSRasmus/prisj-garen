@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ExternalLink, Clock, TrendingDown, TrendingUp, Package, RefreshCw } from "lucide-react";
+import ShareDealButton from "@/components/products/ShareDealButton";
 import { format, formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
 import { motion } from "framer-motion";
@@ -134,6 +135,7 @@ export default function ProductDetail() {
                       Köp på Amazon
                     </Button>
                   </a>
+                  <ShareDealButton product={product} className="h-12 px-5 text-base" />
                   <Button className="h-12 px-5 text-base gap-2" variant="outline" onClick={handleRefreshPrice} disabled={refreshing}>
                     <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
                     {refreshing ? "Uppdaterar..." : "Uppdatera pris"}
