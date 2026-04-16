@@ -30,7 +30,8 @@ export default function Dashboard() {
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
-    queryFn: () => base44.entities.Product.list("-created_date"),
+    queryFn: () => base44.entities.Product.filter({ created_by: currentUser.email }, "-created_date"),
+    enabled: !!currentUser?.email,
   });
 
   const deleteMutation = useMutation({

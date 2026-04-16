@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
@@ -32,8 +32,13 @@ function StatCard({ label, value, icon: Icon, highlight = false }) {
 export default function ProductDetail() {
   const { id: productId } = useParams();
   const [refreshing, setRefreshing] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
 
   const { data: product, isLoading: productLoading } = useQuery({
     queryKey: ["product", productId],
@@ -89,7 +94,7 @@ export default function ProductDetail() {
     );
   }
 
-  if (!product) {
+  if (!product || product.created_by !== currentUser?.email) {
     return (
       <div className="text-center py-20">
         <h2 className="text-xl font-bold mb-2">Produkten hittades inte</h2>

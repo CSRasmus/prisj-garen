@@ -37,7 +37,8 @@ export default function AddProduct() {
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
-    queryFn: () => base44.entities.Product.list(),
+    queryFn: () => base44.entities.Product.filter({ created_by: currentUser.email }),
+    enabled: !!currentUser?.email,
     initialData: [],
   });
 
