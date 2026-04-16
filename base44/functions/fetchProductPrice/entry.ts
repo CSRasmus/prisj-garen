@@ -11,28 +11,34 @@ Deno.serve(async (req) => {
 
     console.log(`Fetching price for ASIN: ${asin}`);
 
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Search amazon.se for the product with ASIN ${asin}. Find the exact current price listed on the product page right now. Return ONLY a JSON object with exactly these fields: { price: number, currency: string }. Example: { price: 299.00, currency: "SEK" }. Do not include any other text.`,
+    // Use text response (no response_json_schema) since gemini_3_flash + internet can return null with schema
+    const rawText = await base44.integrations.Core.InvokeLLM({
+      prompt: `Go to amazon.se and search for the product with ASIN ${asin} (title: "${title}"). Find the current price shown on the product page. Respond with ONLY a JSON object like this: {"price": 299.00, "currency": "SEK"}. No other text, just the JSON.`,
       add_context_from_internet: true,
-      model: "gemini_3_flash",
-      response_json_schema: {
-        type: "object",
-        properties: {
-          price: { type: "number" },
-          currency: { type: "string" }
-        },
-        required: ["price", "currency"]
-      }
+      model: "gemini_3_flash"
     });
 
-    console.log("LLM result:", JSON.stringify(result));
+    console.log("LLM raw response:", rawText);
 
-    if (!result || typeof result.price !== "number" || result.price <= 0) {
-      console.error("Invalid price result:", result);
-      return Response.json({ error: "Could not find a valid price for this product" }, { status: 422 });
+    if (!rawText) {
+      throw new Error("LLM returned empty response");
     }
 
-    const price = result.price;
+    // Parse JSON from the text response
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("No JSON found in response:", rawText);
+      throw new Error("Could not parse price from LLM response");
+    }
+
+    const result = JSON.parse(jsonMatch[0]);
+    console.log("Parsed result:", JSON.stringify(result));
+
+    const price = parseFloat(result.price);
+    if (!price || price <= 0) {
+      throw new Error(`Invalid price value: ${result.price}`);
+    }
+
     const currency = result.currency || "SEK";
     const now = new Date().toISOString();
 
@@ -59,12 +65,12 @@ Deno.serve(async (req) => {
         last_checked: now
       });
 
-      console.log(`Updated product ${product_id}: price=${price}, lowest=${lowestPrice}, highest=${highestPrice}, isLow=${isLowPrice}`);
+      console.log(`Updated product ${product_id}: price=${price} ${currency}, isLow=${isLowPrice}`);
     }
 
     return Response.json({ success: true, price, currency });
   } catch (error) {
-    console.error("fetchProductPrice error:", error.message, error.stack);
+    console.error("fetchProductPrice error:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
