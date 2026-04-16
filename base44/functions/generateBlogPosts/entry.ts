@@ -62,17 +62,35 @@ async function calculatePriceMetrics(globalHistory, asin, days = 90) {
   };
 }
 
-async function generateArticles(base44) {
-  const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+function buildProductCard(title, currentPrice, avgPrice, lowestPrice, highestPrice, imageUrl) {
+  const discount = avgPrice > 0 ? Math.round(((avgPrice - currentPrice) / avgPrice) * 100) : 0;
+  const initials = title.charAt(0).toUpperCase();
+  const imageHtml = imageUrl 
+    ? `<img src="${imageUrl}" style="width:80px;height:80px;object-fit:contain;border-radius:8px;background:#f9fafb;padding:4px" />`
+    : `<div style="width:80px;height:80px;background:#16a34a;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:32px">${initials}</div>`;
 
-  // Fetch all price history
-  const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
-    { amazon_domain: "amazon.se" },
-    "-checked_at",
-    5000
-  );
+  return `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:16px 0;display:flex;gap:16px;align-items:flex-start">
+${imageHtml}
+<div>
+<strong style="display:block;margin-bottom:6px">${title}</strong>
+<span style="color:#16a34a;font-size:1.4em;font-weight:bold">${currentPrice} kr</span>
+<span style="color:#9ca3af;text-decoration:line-through;margin-left:8px;font-size:0.9em">${avgPrice} kr</span><br/>
+<span style="background:#dcfce7;color:#16a34a;padding:4px 8px;border-radius:4px;font-size:0.85em;display:inline-block;margin-top:6px">-${discount}% rabatt | Lägsta 90d: ${lowestPrice} kr</span>
+</div>
+</div>`;
+}
+
+async function generateArticles(base44) {
+   const now = new Date();
+   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+   const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+   // Fetch all price history
+   const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+     { amazon_domain: "amazon.se" },
+     "-checked_at",
+     5000
+   );
 
   // Find products with data in last 7 days
   const asinMap = {};
@@ -186,15 +204,20 @@ async function generateArticles(base44) {
       .slice(-20) // Last 20 entries for context
       .join(", ");
 
+    const productCardHtml = buildProductCard(
+      topProduct.title,
+      metrics.currentPrice,
+      metrics.avgPrice,
+      metrics.lowestPrice,
+      metrics.highestPrice,
+      topProduct.image_url || null
+    );
+
     const article2Prompt = `Skriv en djupgående prisanalys på svenska för ${topProduct.title} baserat på denna 90-dagars prishistorik: ${priceHistory}.
 
-Börja med en produktkort:
+    Börja med denna produktkort:
 
-<div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:16px 0;background:#f9fafb">
-<strong>${topProduct.title}</strong><br/>
-<span style="color:#16a34a;font-size:1.5em;font-weight:bold">${metrics.currentPrice} kr</span> <span style="color:#6b7280;text-decoration:line-through">${metrics.avgPrice} kr</span><br/>
-<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:4px;font-size:0.9em">Lägsta 90d: ${metrics.lowestPrice} kr | Högsta: ${metrics.highestPrice} kr</span>
-</div>
+    ${productCardHtml}
 
 Analysera pristrend, bästa köptillfällen, och ge konkret rekommendation. Var kritisk och saklig.
 
@@ -233,11 +256,27 @@ Skriv 400-600 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
     .filter(p => p.metrics && p.category === rotatedCategory)
     .slice(0, 8);
 
+  const categoryProductsHtml = categoryProducts
+    .slice(0, 3)
+    .map(p => buildProductCard(
+      p.title,
+      p.metrics.currentPrice,
+      p.metrics.avgPrice,
+      p.metrics.lowestPrice,
+      p.metrics.highestPrice,
+      p.image_url || null
+    ))
+    .join("");
+
   const categoryDataText = categoryProducts
     .map(p => `${p.title}: ${p.metrics.currentPrice} kr (var ${p.metrics.avgPrice} kr i genomsnitt), sjunkit ${p.metrics.percentFromAvg}%`)
     .join(". ");
 
   const article3Prompt = `Skriv en månadsrapport på svenska om prisutvecklingen för ${rotatedCategory}-produkter på Amazon.se. Basera på denna data: ${categoryDataText}.
+
+  Inkludera dessa produkter med bilder när du skriver rapporten:
+
+  ${categoryProductsHtml}
 
   Börja med en faktaruta:
   <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px;margin:20px 0;border-radius:8px">
