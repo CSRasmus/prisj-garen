@@ -1,108 +1,123 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+const RAINFOREST_API_KEY = Deno.env.get("RAINFOREST_API_KEY");
+
+const ninetyDaysAgo = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 90);
+  return d;
+};
+
+async function fetchAndSavePrice(base44, product) {
+  const url = `https://api.rainforestapi.com/request?api_key=${RAINFOREST_API_KEY}&type=product&asin=${product.asin}&amazon_domain=amazon.se&include_price_history=true`;
+  const response = await fetch(url);
+  const data = await response.json();
+
+  const p = data.product;
+  if (!p) throw new Error(`No product data: ${data.message || ''}`);
+
+  const price = parseFloat(
+    p.buybox_winner?.price?.value || p.price?.value || p.rrp?.value
+  );
+  if (!price || price < 1 || price > 100000) throw new Error(`Invalid price: ${price}`);
+
+  const currency = "SEK";
+  const now = new Date().toISOString();
+  const cutoff = ninetyDaysAgo();
+
+  // Import historical data from Rainforest
+  const rawHistory = (p.price_history || []).filter(h => h.date && h.price && new Date(h.date) >= cutoff);
+  const existingHistory = await base44.asServiceRole.entities.PriceHistory.filter({ product_id: product.id }, "-checked_at", 500);
+  const existingDates = new Set(existingHistory.map(h => h.checked_at?.substring(0, 10)));
+
+  const newPoints = rawHistory.filter(h => !existingDates.has(h.date?.substring(0, 10)));
+  for (const point of newPoints) {
+    await base44.asServiceRole.entities.PriceHistory.create({
+      product_id: product.id,
+      price: parseFloat(point.price),
+      currency,
+      checked_at: new Date(point.date).toISOString(),
+    });
+  }
+
+  // Add today's price
+  await base44.asServiceRole.entities.PriceHistory.create({ product_id: product.id, price, currency, checked_at: now });
+
+  // Compute 90d stats
+  const allPrices = [
+    ...existingHistory.map(h => h.price),
+    ...newPoints.map(pt => parseFloat(pt.price)),
+    price
+  ].filter(v => v > 0);
+
+  const lowestPrice = Math.min(...allPrices);
+  const highestPrice = Math.max(...allPrices);
+  const isLowPrice = price <= lowestPrice * 1.05;
+
+  const updateData = { current_price: price, currency, lowest_price_90d: lowestPrice, highest_price_90d: highestPrice, is_low_price: isLowPrice, last_checked: now };
+  if (p.main_image?.link) updateData.image_url = p.main_image.link;
+
+  await base44.asServiceRole.entities.Product.update(product.id, updateData);
+
+  // Send email if low price and notifications enabled
+  if (isLowPrice && product.notify_on_drop && product.created_by) {
+    const appUrl = `https://priskoll.base44.app/product/${product.id}`;
+    await base44.asServiceRole.integrations.Core.SendEmail({
+      to: product.created_by,
+      subject: `🔥 Lågt pris på ${product.title}!`,
+      body: `
+        <div style="font-family: sans-serif; max-width: 600px;">
+          <h2 style="color: #2d9a5f;">🔥 Lågt pris på ${product.title}!</h2>
+          <p>Priset har sjunkit till ett lågt nivå!</p>
+          <table style="border-collapse: collapse; margin: 16px 0;">
+            <tr><td style="padding: 4px 12px 4px 0; color: #666;">Nuvarande pris:</td><td style="font-weight: bold; font-size: 1.2em; color: #2d9a5f;">${price} ${currency}</td></tr>
+            <tr><td style="padding: 4px 12px 4px 0; color: #666;">Lägst 90 dagar:</td><td>${lowestPrice} ${currency}</td></tr>
+            <tr><td style="padding: 4px 12px 4px 0; color: #666;">Högst 90 dagar:</td><td>${highestPrice} ${currency}</td></tr>
+          </table>
+          <a href="${appUrl}" style="display: inline-block; background: #2d9a5f; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; margin-top: 8px;">Visa i PrisKoll →</a>
+          <p style="color: #aaa; font-size: 12px; margin-top: 24px;">PrisKoll – Din prisbevakning för Amazon.se</p>
+        </div>
+      `
+    });
+  }
+
+  return { price, isLowPrice, notified: isLowPrice && product.notify_on_drop };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    
-    if (user?.role !== 'admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-    }
-
-    // Get all products
     const products = await base44.asServiceRole.entities.Product.list();
-    
+
     if (products.length === 0) {
-      return Response.json({ message: 'No products to check', checked: 0 });
+      console.log("No products to update.");
+      return Response.json({ message: 'No products to update', updated: 0, total: 0 });
     }
 
-    const results = [];
+    let updated = 0;
+    const errors = [];
 
     for (const product of products) {
-      // Use LLM with internet to look up current price
-      const priceData = await base44.asServiceRole.integrations.Core.InvokeLLM({
-        prompt: `What is the current price in SEK for the Amazon.se product with ASIN ${product.asin}? Product title: "${product.title}". Return the price as a number. If you can't find the exact price, return null.`,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            price: { type: "number" },
-            currency: { type: "string" },
-            found: { type: "boolean" }
-          }
-        }
-      });
+      try {
+        await fetchAndSavePrice(base44, product);
+        updated++;
+        console.log(`Updated ${product.asin} (${updated}/${products.length})`);
+      } catch (err) {
+        console.error(`Failed to update ${product.asin}: ${err.message}`);
+        errors.push({ asin: product.asin, error: err.message });
+      }
 
-      if (priceData.found && priceData.price) {
-        const now = new Date().toISOString();
-        
-        // Record price history
-        await base44.asServiceRole.entities.PriceHistory.create({
-          product_id: product.id,
-          price: priceData.price,
-          currency: priceData.currency || "SEK",
-          checked_at: now
-        });
-
-        // Get last 90 days of price history for this product
-        const history = await base44.asServiceRole.entities.PriceHistory.filter(
-          { product_id: product.id },
-          "-checked_at",
-          90
-        );
-
-        const prices = history.map(h => h.price).filter(p => p != null);
-        const lowestPrice = prices.length > 0 ? Math.min(...prices) : priceData.price;
-        const highestPrice = prices.length > 0 ? Math.max(...prices) : priceData.price;
-
-        // Determine if this is a low price (within 15% of the lowest)
-        const range = highestPrice - lowestPrice;
-        const isLowPrice = range > 0 
-          ? ((priceData.price - lowestPrice) / range) <= 0.15 
-          : false;
-
-        // Update product
-        await base44.asServiceRole.entities.Product.update(product.id, {
-          current_price: priceData.price,
-          currency: priceData.currency || "SEK",
-          lowest_price_90d: lowestPrice,
-          highest_price_90d: highestPrice,
-          is_low_price: isLowPrice,
-          last_checked: now
-        });
-
-        // Send email notification if price is low and notifications are enabled
-        if (isLowPrice && product.notify_on_drop && product.created_by) {
-          const affiliateUrl = `https://www.amazon.se/dp/${product.asin}?tag=prisbevak-21`;
-          await base44.asServiceRole.integrations.Core.SendEmail({
-            to: product.created_by,
-            subject: `🟢 Lågt pris på ${product.title}`,
-            body: `
-              <h2>Prisvarning: ${product.title}</h2>
-              <p>Priset har sjunkit till <strong>${priceData.price} ${priceData.currency || "SEK"}</strong>!</p>
-              <p>Lägsta priset senaste 90 dagarna: ${lowestPrice} ${priceData.currency || "SEK"}</p>
-              <p>Högsta priset senaste 90 dagarna: ${highestPrice} ${priceData.currency || "SEK"}</p>
-              <p><a href="${affiliateUrl}">Köp nu på Amazon →</a></p>
-              <br/>
-              <p style="color: #888; font-size: 12px;">PrisKoll - Din prisbevakning för Amazon</p>
-            `
-          });
-
-          results.push({ asin: product.asin, price: priceData.price, notified: true });
-        } else {
-          results.push({ asin: product.asin, price: priceData.price, notified: false });
-        }
-      } else {
-        results.push({ asin: product.asin, error: "Could not find price" });
+      // Rate limit: 2s between requests
+      if (products.indexOf(product) < products.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
 
-    return Response.json({ 
-      message: 'Price check completed', 
-      checked: results.length,
-      results 
-    });
+    const msg = `Daily price update complete: ${updated}/${products.length} products updated`;
+    console.log(msg);
+    return Response.json({ message: msg, updated, total: products.length, errors });
   } catch (error) {
+    console.error("checkPrices fatal error:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
