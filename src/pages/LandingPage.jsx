@@ -98,9 +98,20 @@ function FeatureCard({ emoji, title, desc, delay }) {
 }
 
 export default function LandingPage() {
-  const [sliderValue, setSliderValue] = useState(20000);
-  const savings = Math.round(sliderValue * 0.15);
+  const SLIDER_STEPS = [1000, 2500, 5000, 10000, 15000, 20000, 30000, 50000, 100000];
+  const [sliderIndex, setSliderIndex] = useState(4); // default: 15000
+  const sliderValue = SLIDER_STEPS[sliderIndex];
+  const savings = Math.round(sliderValue * 0.30);
   const monthly = Math.round(savings / 12);
+  const daily = Math.round(savings / 365);
+  const dogFoodBags = Math.floor(savings / 150);
+
+  const getProductComparison = (s) => {
+    if (s < 500) return "ett par hörlurar";
+    if (s < 1000) return "en spelkontroll";
+    if (s < 2000) return "en ny högtalarebox";
+    return "en ny surfplatta";
+  };
 
   const handleLogin = () => base44.auth.redirectToLogin("/dashboard");
   const handleSignup = () => base44.auth.redirectToLogin("/dashboard");
@@ -173,11 +184,11 @@ export default function LandingPage() {
               </label>
               <input
                 type="range"
-                min={1000}
-                max={100000}
-                step={1000}
-                value={sliderValue}
-                onChange={(e) => setSliderValue(Number(e.target.value))}
+                min={0}
+                max={SLIDER_STEPS.length - 1}
+                step={1}
+                value={sliderIndex}
+                onChange={(e) => setSliderIndex(Number(e.target.value))}
                 className="w-full accent-primary h-2 cursor-pointer"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
@@ -191,26 +202,59 @@ export default function LandingPage() {
                 <p className="text-xs text-primary font-semibold mb-1">💰 Potentiell besparing/år</p>
                 <motion.p
                   key={savings}
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
+                  initial={{ y: -8, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
                   className="text-2xl font-extrabold text-primary"
                 >
                   {savings.toLocaleString("sv-SE")} kr
                 </motion.p>
+                <motion.p
+                  key={"dog-" + savings}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, delay: 0.05 }}
+                  className="text-xs text-primary/70 mt-1"
+                >
+                  🐾 Det räcker till {dogFoodBags} påsar hundmat
+                </motion.p>
               </div>
               <div className="bg-secondary/60 border border-border rounded-xl p-4 text-left">
-                <p className="text-xs text-muted-foreground font-semibold mb-1">📦 Det är per månad</p>
+                <p className="text-xs text-muted-foreground font-semibold mb-1">📅 Per månad</p>
                 <motion.p
                   key={monthly}
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
+                  initial={{ y: -8, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
                   className="text-2xl font-extrabold text-foreground"
                 >
                   {monthly.toLocaleString("sv-SE")} kr
                 </motion.p>
+                <motion.p
+                  key={"daily-" + daily}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, delay: 0.05 }}
+                  className="text-xs text-muted-foreground mt-1"
+                >
+                  📱 Det är nästan priset på {getProductComparison(savings)}
+                </motion.p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">🐾 Perfekt om du köper husdjursprodukter, elektronik eller hushållsartiklar regelbundet</p>
+            <div className="bg-muted/40 rounded-lg px-4 py-2 text-center">
+              <motion.p
+                key={"daily-banner-" + daily}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="text-sm font-semibold text-foreground"
+              >
+                ⏱️ Det är <span className="text-primary">{daily} kr</span> sparade varje dag
+              </motion.p>
+            </div>
+            <p className="text-[11px] text-muted-foreground/70 italic">
+              *Baserat på genomsnittliga prisfall på Amazon.se. Faktisk besparing varierar beroende på produkter och köpmönster.
+            </p>
             <Button onClick={handleSignup} className="w-full h-12 text-base font-semibold shadow-lg shadow-primary/20">
               Börja spara nu — det är gratis
             </Button>
