@@ -104,13 +104,16 @@ export default function LandingPage() {
   const savings = Math.round(sliderValue * 0.30);
   const monthly = Math.round(savings / 12);
   const daily = Math.round(savings / 365);
-  const dogFoodBags = Math.floor(savings / 150);
+  const weekly = Math.round(savings / 52);
+  const dogFoodBags = Math.floor(savings / 400);
 
-  const getProductComparison = (s) => {
-    if (s < 500) return "ett par hörlurar";
-    if (s < 1000) return "en spelkontroll";
-    if (s < 2000) return "en ny högtalarebox";
-    return "en ny surfplatta";
+  const getProductComparison = (m) => {
+    if (m < 200) return "ett par billiga hörlurar";
+    if (m < 400) return "en bra spelkontroll";
+    if (m < 600) return "en ny Bluetooth-högtalare";
+    if (m < 900) return "en ny gamingmus eller tangentbord";
+    if (m < 1500) return "en ny surfplatta";
+    return "en ny iPhone eller laptop";
   };
 
   const handleLogin = () => base44.auth.redirectToLogin("/dashboard");
@@ -216,7 +219,7 @@ export default function LandingPage() {
                   transition={{ duration: 0.2, delay: 0.05 }}
                   className="text-xs text-primary/70 mt-1"
                 >
-                  🐾 Det räcker till {dogFoodBags} påsar hundmat
+                  🐾 Det räcker till {dogFoodBags} stora påsar hundmat
                 </motion.p>
               </div>
               <div className="bg-secondary/60 border border-border rounded-xl p-4 text-left">
@@ -237,7 +240,7 @@ export default function LandingPage() {
                   transition={{ duration: 0.2, delay: 0.05 }}
                   className="text-xs text-muted-foreground mt-1"
                 >
-                  📱 Det är nästan priset på {getProductComparison(savings)}
+                  📱 Det är nästan priset på {getProductComparison(monthly)}
                 </motion.p>
               </div>
             </div>
@@ -249,7 +252,10 @@ export default function LandingPage() {
                 transition={{ duration: 0.2 }}
                 className="text-sm font-semibold text-foreground"
               >
-                ⏱️ Det är <span className="text-primary">{daily} kr</span> sparade varje dag
+                {daily >= 5
+                  ? <>⏱️ Det är <span className="text-primary">{daily} kr</span> sparade varje dag</>
+                  : <>📆 Det är <span className="text-primary">{weekly} kr</span> sparade varje vecka</>
+                }
               </motion.p>
             </div>
             <p className="text-[11px] text-muted-foreground/70 italic">
