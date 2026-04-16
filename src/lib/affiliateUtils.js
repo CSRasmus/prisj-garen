@@ -1,4 +1,4 @@
-const AFFILIATE_TAG = "prisbevak-21";
+const AFFILIATE_TAG = "priskoll-21";
 
 export function addAffiliateTag(url) {
   if (!url) return url;
