@@ -13,6 +13,7 @@ import PriceChart from "@/components/products/PriceChart";
 import PriceBadge from "@/components/products/PriceBadge";
 import { formatPrice, getPriceStatus, buildAmazonUrl } from "@/lib/affiliateUtils";
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
+import { useToast } from "@/components/ui/use-toast";
 
 function StatCard({ label, value, icon: Icon, highlight = false }) {
   return (
@@ -30,6 +31,7 @@ export default function ProductDetail() {
   const { id: productId } = useParams();
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: product, isLoading: productLoading } = useQuery({
     queryKey: ["product", productId],
@@ -46,9 +48,16 @@ export default function ProductDetail() {
   const handleRefreshPrice = async () => {
     setRefreshing(true);
     try {
-      await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
-      await queryClient.invalidateQueries({ queryKey: ["product", productId] });
-    } catch (_) {}
+      const res = await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
+      if (res.data?.found === false) {
+        toast({ title: "Kunde inte hitta priset", description: "Försök igen om en stund.", variant: "destructive" });
+      } else {
+        await queryClient.invalidateQueries({ queryKey: ["product", productId] });
+        toast({ title: "Pris uppdaterat!" });
+      }
+    } catch (_) {
+      toast({ title: "Fel vid uppdatering", description: "Försök igen.", variant: "destructive" });
+    }
     setRefreshing(false);
   };
 

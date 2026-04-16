@@ -10,10 +10,12 @@ import PriceBadge from "./PriceBadge";
 import { formatPrice, getPriceStatus, buildAmazonUrl } from "@/lib/affiliateUtils";
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function ProductCard({ product, onDelete, onToggleNotify, index = 0, onPriceDrop }) {
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const status = getPriceStatus(product.current_price, product.lowest_price_90d, product.highest_price_90d);
 
   const handleRefresh = async (e) => {
@@ -21,11 +23,18 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
     setRefreshing(true);
     const prevLow = product.is_low_price;
     try {
-      await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
-      await queryClient.invalidateQueries({ queryKey: ["products"] });
-      const updated = queryClient.getQueryData(["products"])?.find(p => p.id === product.id);
-      if (updated?.is_low_price && !prevLow) onPriceDrop?.();
-    } catch (_) {}
+      const res = await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
+      if (res.data?.found === false) {
+        toast({ title: "Kunde inte hitta priset", description: "Försök igen om en stund.", variant: "destructive" });
+      } else {
+        await queryClient.invalidateQueries({ queryKey: ["products"] });
+        const updated = queryClient.getQueryData(["products"])?.find(p => p.id === product.id);
+        if (updated?.is_low_price && !prevLow) onPriceDrop?.();
+        toast({ title: "Pris uppdaterat!" });
+      }
+    } catch (_) {
+      toast({ title: "Fel vid uppdatering", description: "Försök igen.", variant: "destructive" });
+    }
     setRefreshing(false);
   };
 
