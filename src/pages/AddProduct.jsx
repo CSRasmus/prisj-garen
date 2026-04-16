@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Search, Plus, Loader2, Link2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
+import { lookupProduct } from "@/functions/lookupProduct";
 import { motion } from "framer-motion";
 
 function extractASIN(input) {
@@ -43,25 +44,24 @@ export default function AddProduct() {
       const existing = products.find((p) => p.asin === extractedAsin);
       if (existing) throw new Error("Den här produkten bevakas redan.");
 
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Find the Amazon product with ASIN ${extractedAsin} on Amazon.se (Sweden). Return the product title and a direct image URL. If you can't find it, make a reasonable product title based on the ASIN.`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            image_url: { type: "string" },
-          },
-        },
-        add_context_from_internet: true,
-      });
+      const result = await lookupProduct({ asin: extractedAsin });
+      if (result.data?.error) throw new Error(result.data.error);
 
-      return { asin: extractedAsin, title: result.title, image_url: result.image_url };
+      return {
+        asin: extractedAsin,
+        title: result.data.title,
+        image_url: result.data.image_url,
+        current_price: result.data.current_price,
+      };
     },
     onSuccess: (data) => {
       setAsin(data.asin);
       setTitle(data.title || "");
       setImageUrl(data.image_url || "");
       setError("");
+      if (data.current_price) {
+        toast({ title: `Pris: ${data.current_price} SEK`, description: data.title });
+      }
     },
     onError: (err) => setError(err.message),
   });
