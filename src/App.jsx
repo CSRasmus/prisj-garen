@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import AppLayout from '@/components/layout/AppLayout';
+import InstallPrompt from '@/components/InstallPrompt';
 import Dashboard from '@/pages/Dashboard';
 import AddProduct from '@/pages/AddProduct';
 import ProductDetail from '@/pages/ProductDetail';
@@ -53,6 +54,7 @@ function App() {
           <AuthenticatedApp />
         </Router>
         <Toaster />
+        <InstallPrompt />
       </QueryClientProvider>
     </AuthProvider>
   )

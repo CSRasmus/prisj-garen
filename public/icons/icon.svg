@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="90" fill="#16a34a"/>
+  <!-- Price tag shape -->
+  <path d="M320 96H192c-8.8 0-17.3 3.5-23.5 9.7L88.7 185.5C82.5 191.7 79 200.2 79 209v10c0 8.8 3.5 17.3 9.7 23.5l180 180c12.5 12.5 32.8 12.5 45.3 0l138-138c12.5-12.5 12.5-32.8 0-45.3l-108-108C338.5 125.5 329.5 122 320 122z" fill="none" stroke="white" stroke-width="22" stroke-linejoin="round"/>
+  <!-- Hole in tag -->
+  <circle cx="176" cy="208" r="20" fill="white"/>
+  <!-- Price symbol (kr) -->
+  <text x="272" y="310" font-family="Arial, sans-serif" font-weight="bold" font-size="110" fill="white" text-anchor="middle">kr</text>
+</svg>
