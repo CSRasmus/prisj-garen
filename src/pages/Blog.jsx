@@ -86,7 +86,7 @@ export default function Blog() {
         {/* Hero */}
         <section className="bg-gradient-to-br from-primary to-emerald-500 text-white py-16">
           <div className="max-w-4xl mx-auto px-4 text-center space-y-4">
-            <h1 className="text-4xl sm:text-5xl font-extrabold">Amazon Deals & Pristips</h1>
+            <h1 className="text-4xl sm:text-5xl font-extrabold">Prisfall — Amazon Deals & Pristips</h1>
             <p className="text-lg text-white/80">Senaste artiklarna om prissänkningar, köpguider och sparande på Amazon.se</p>
           </div>
         </section>

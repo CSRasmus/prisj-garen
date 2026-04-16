@@ -5,7 +5,7 @@ export function buildShareText(product) {
     ? Math.round(product.highest_price_90d - product.current_price)
     : null;
   const diffText = priceDiff && priceDiff > 0 ? ` — ${priceDiff} kr billigare än vanligt` : "";
-  return `🔥 Prisfall på Amazon!\n\n${product.title} är nu ${product.current_price} kr${diffText}!\n\nHitta fler deals på PrisJägaren 👉 ${APP_URL}`;
+  return `🔥 Prisfall på Amazon!\n\n${product.title} är nu ${product.current_price} kr${diffText}!\n\nHitta fler deals på Prisfall 👉 ${APP_URL}`;
 }
 
 export async function shareDeal(product, toast) {
@@ -14,7 +14,7 @@ export async function shareDeal(product, toast) {
 
   if (navigator.share) {
     try {
-      await navigator.share({ title: "PrisJägaren – Prisfall!", text, url });
+      await navigator.share({ title: "Prisfall – Bevaka priser!", text, url });
     } catch (e) {
       // User cancelled — do nothing
     }
@@ -29,7 +29,7 @@ export function buildReferralUrl(referralCode) {
 }
 
 export function buildReferralShareText(referralUrl) {
-  return `Hej! Jag använder PrisJägaren för att spara pengar på Amazon — helt gratis!\nRegistrera dig här så får vi båda fler bevakningar: ${referralUrl}`;
+  return `Hej! Jag använder Prisfall för att spara pengar på Amazon — helt gratis!\nRegistrera dig här så får vi båda fler bevakningar: ${referralUrl}`;
 }
 
 export async function shareReferral(referralCode, toast) {
@@ -38,7 +38,7 @@ export async function shareReferral(referralCode, toast) {
 
   if (navigator.share) {
     try {
-      await navigator.share({ title: "PrisJägaren – Bjud in en vän!", text, url });
+      await navigator.share({ title: "Prisfall – Bjud in en vän!", text, url });
     } catch (e) {
       // cancelled
     }

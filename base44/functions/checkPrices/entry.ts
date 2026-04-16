@@ -114,15 +114,15 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
     if (!alreadyNotifiedRecently) {
       const appUrl = `https://prisfall.se/product/${product.id}`;
       const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`;
-      const shareText = encodeURIComponent(`🔥 Prisfall på Amazon!\n\n${product.title} är nu ${price} kr!\n\nHitta fler deals: https://priskoll.base44.app`);
+      const shareText = encodeURIComponent(`🔥 Prisfall på Amazon!\n\n${product.title} är nu ${price} kr!\n\nHitta fler deals: https://prisfall.se`);
       const whatsappUrl = `https://wa.me/?text=${shareText}`;
       const smsUrl = `sms:?body=${shareText}`;
       await base44.asServiceRole.integrations.Core.SendEmail({
         to: product.created_by,
-        subject: `${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}!`,
+        subject: `${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}! — Prisfall`,
         body: `
           <div style="font-family: sans-serif; max-width: 600px; color: #222;">
-            <h2 style="color: #2d9a5f;">${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}!</h2>
+            <h2 style="color: #2d9a5f;">${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}! (Prisfall)</h2>
             <p>${hasTargetPrice ? `Priset har sjunkit under ditt målpris på ${product.target_price} kr!` : "Priset har sjunkit till en rekordlåg nivå de senaste 90 dagarna!"}</p>
             <table style="border-collapse: collapse; margin: 16px 0;">
               <tr><td style="padding: 4px 12px 4px 0; color: #666;">Nuvarande pris:</td><td style="font-weight: bold; font-size: 1.2em; color: #2d9a5f;">${price} ${currency}</td></tr>
@@ -138,7 +138,7 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
               <a href="${whatsappUrl}" style="display: inline-block; background: #25D366; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px; margin-right: 8px;">WhatsApp</a>
               <a href="${smsUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px;">SMS</a>
             </div>
-            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">PrisJägaren – Din prisbevakning för Amazon.se</p>
+            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">Prisfall – Din prisbevakning för Amazon.se</p>
           </div>
         `
       });

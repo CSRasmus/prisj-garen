@@ -137,7 +137,7 @@ export default function BlogPost() {
               className="bg-primary/10 border border-primary/20 rounded-xl p-6 text-center space-y-3"
             >
               <h3 className="font-bold text-lg text-foreground">Vill du aldrig missa ett deal?</h3>
-              <p className="text-muted-foreground">Bevaka priser gratis på PrisJägaren — få notis direkt när priset sjunker!</p>
+              <p className="text-muted-foreground">Bevaka priser gratis på Prisfall — få notis direkt när priset sjunker!</p>
               <Link to="/add">
                 <Button className="bg-primary">Börja bevaka nu →</Button>
               </Link>

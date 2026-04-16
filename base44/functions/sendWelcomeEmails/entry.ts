@@ -22,7 +22,7 @@ function buildWelcomeEmailHtml(userName) {
           <tr>
             <td style="background:linear-gradient(135deg,#16a34a,#22c55e);padding:36px 32px;text-align:center;">
               <div style="font-size:40px;margin-bottom:8px;">🏷️</div>
-              <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:800;letter-spacing:-0.5px;">PrisJägaren</h1>
+              <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:800;letter-spacing:-0.5px;">Prisfall</h1>
               <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:14px;">Prisbevakning för Amazon.se</p>
             </td>
           </tr>
@@ -30,10 +30,10 @@ function buildWelcomeEmailHtml(userName) {
           <!-- Welcome -->
           <tr>
             <td style="padding:32px 32px 24px;">
-              <h2 style="color:#111827;font-size:22px;font-weight:700;margin:0 0 12px;">Hej ${firstName}! Välkommen till PrisJägaren 🎉</h2>
+              <h2 style="color:#111827;font-size:22px;font-weight:700;margin:0 0 12px;">Hej ${firstName}! Välkommen till Prisfall 🎉</h2>
               <p style="color:#4b5563;font-size:15px;line-height:1.6;margin:0;">
-                Du är nu en av de smarta shopparna som aldrig behöver betala för mycket på Amazon igen. Vi håller koll på priserna åt dig — helt automatiskt och helt gratis.
-              </p>
+                  Du är nu en av de smarta shopparna som aldrig behöver betala för mycket på Amazon igen. Prisfall håller koll på priserna åt dig — helt automatiskt och helt gratis.
+                </p>
             </td>
           </tr>
 
@@ -108,7 +108,7 @@ function buildWelcomeEmailHtml(userName) {
           <tr>
             <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 32px;text-align:center;">
               <p style="color:#9ca3af;font-size:12px;margin:0;line-height:1.6;">
-                🏷️ PrisJägaren — Helt gratis, alltid.<br/>
+                📉 Prisfall — Helt gratis, alltid.<br/>
                 Vi tjänar en liten provision när du handlar via våra länkar, utan extra kostnad för dig.
               </p>
             </td>
@@ -156,8 +156,8 @@ Deno.serve(async (req) => {
 
       await base44.asServiceRole.integrations.Core.SendEmail({
         to: user.email,
-        from_name: "PrisJägaren",
-        subject: "🏷️ Välkommen till PrisJägaren — börja spara idag!",
+        from_name: "Prisfall",
+        subject: "📉 Välkommen till Prisfall — börja spara idag!",
         body: html,
       });
 

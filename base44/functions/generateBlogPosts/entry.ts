@@ -123,7 +123,7 @@ async function generateArticles(base44) {
   const categories = ["husdjur", "elektronik", "hem", "deals"];
   const rotatedCategory = categories[weekNumber % categories.length];
 
-  const DISCLAIMER = "<p style='margin-top: 24px; padding: 12px; background: #f3f4f6; border-left: 4px solid #16a34a; font-size: 12px; color: #666;'><strong>Prisdata:</strong> Baseras på PrisJägarens prisdatabas och uppdateras dagligen från Amazon.se.</p>";
+  const DISCLAIMER = "<p style='margin-top: 24px; padding: 12px; background: #f3f4f6; border-left: 4px solid #16a34a; font-size: 12px; color: #666;'><strong>Prisdata:</strong> Baseras på Prisfalls prisdatabas och uppdateras dagligen från Amazon.se.</p>";
 
   // Generate articles
   const articles = [];
@@ -139,7 +139,7 @@ async function generateArticles(base44) {
 
 Artikeln ska kännas som en riktig analys, inte reklam. Inkludera meningar som "Enligt vår prisdata har X sjunkit X% under veckan" och "Genomsnittspriset de senaste 90 dagarna är X kr". 
 
-Skriv 500 ord i HTML-format med <h1>, <h2>, <p>-taggar. Var konkret med siffror och analyser. Avsluta med en CTA att bevaka priser gratis på PrisJägaren (https://prisfall.se).`;
+Skriv 500 ord i HTML-format med <h1>, <h2>, <p>-taggar. Var konkret med siffror och analyser. Avsluta med en CTA att bevaka priser gratis på Prisfall (https://prisfall.se).`;
 
   const article1Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
     prompt: article1Prompt,

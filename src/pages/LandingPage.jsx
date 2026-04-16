@@ -124,7 +124,7 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <span className="text-lg font-extrabold text-foreground tracking-tight">🏷️ PrisJägaren</span>
+          <span className="text-lg font-extrabold text-foreground tracking-tight">📉 Prisfall</span>
           <div className="flex items-center gap-4">
             <a href="/blogg" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Blogg
@@ -151,7 +151,7 @@ export default function LandingPage() {
               Sluta betala för mycket på Amazon
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              PrisJägaren bevakar dina produkter dygnet runt och skickar en notis direkt när priset sjunker. Helt gratis.
+              Prisfall bevakar dina produkter dygnet runt och skickar en notis direkt när priset sjunker. Helt gratis.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button onClick={handleSignup} className="h-12 px-6 text-base gap-2 shadow-lg shadow-primary/20">
@@ -281,7 +281,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {[
               { step: "1", emoji: "🔍", title: "Lägg till en produkt", desc: "Klistra in en Amazon-länk eller ASIN-nummer. Vi hämtar all information automatiskt.", delay: 0 },
-              { step: "2", emoji: "👁️", title: "Vi bevakar priset", desc: "PrisJägaren kollar priset varje dag automatiskt och sparar hela prishistoriken.", delay: 0.1 },
+              { step: "2", emoji: "👁️", title: "Vi bevakar priset", desc: "Prisfall kollar priset varje dag automatiskt och sparar hela prishistoriken.", delay: 0.1 },
               { step: "3", emoji: "🔔", title: "Du får en notis", desc: "När priset är lågt skickar vi ett mail direkt till dig. Du missar aldrig ett bra pris.", delay: 0.2 },
             ].map(({ step, emoji, title, desc, delay }) => (
               <motion.div
@@ -369,7 +369,7 @@ export default function LandingPage() {
           </motion.div>
           <Accordion type="single" collapsible className="space-y-2">
             {[
-              { q: "Är PrisJägaren verkligen gratis?", a: "Ja, alltid. Vi tjänar pengar via affiliate-provision när du handlar via våra länkar — det kostar dig ingenting extra." },
+              { q: "Är Prisfall verkligen gratis?", a: "Ja, alltid. Vi tjänar pengar via affiliate-provision när du handlar via våra länkar — det kostar dig ingenting extra." },
               { q: "Hur många produkter kan jag bevaka?", a: "Upp till 10 produkter gratis." },
               { q: "Vilka produkter kan jag bevaka?", a: "Alla produkter på Amazon.se med en giltig produktlänk eller ASIN-nummer." },
               { q: "Hur ofta uppdateras priserna?", a: "Varje natt kl 03:00 automatiskt. Du kan även uppdatera manuellt när som helst." },
@@ -435,7 +435,7 @@ export default function LandingPage() {
             <a href="/" className="hover:text-foreground transition-colors">Start</a>
           </div>
           <div className="space-y-1">
-            <p>🏷️ PrisJägaren — Prisbevakning för Amazon.se</p>
+            <p>📉 Prisfall — Bevaka priser på Amazon.se</p>
             <p>Vi använder affiliate-länkar. När du köper via oss får vi en liten provision — utan extra kostnad för dig.</p>
           </div>
         </div>
