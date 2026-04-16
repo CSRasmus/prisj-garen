@@ -154,7 +154,7 @@ Skriv 500 ord i HTML-format med <h1>, <h2>, <p>-taggar. Var konkret med siffror 
     excerpt: `Denna vecka sjönk priserna på topp-produkter på Amazon.se. Se vår analys av verklig prisdata.`,
     category: "deals",
     products_mentioned: weeklyTopProducts.map(p => p.asin).join(","),
-    seo_title: `Amazon prisanalys vecka ${weekNumber} - Verklig prisdata Sverige | PrisJägaren`,
+    seo_title: `Amazon prisanalys vecka ${weekNumber} - Verklig prisdata Sverige | Prisfall`,
     seo_description: "Veckans prisanalys baserad på verklig prisdata från Amazon.se. Se vilka produkter som sjunkit mest.",
     featured_image_url: weeklyTopProducts[0]?.image_url || null,
   });
@@ -190,7 +190,7 @@ Skriv 400-600 ord i HTML-format med <h1>, <h2>, <p>-taggar.`;
       excerpt: `Djupanalys av ${topProduct.title} baserad på 90 dagars prisdata från Amazon.se.`,
       category: "elektronik",
       products_mentioned: topProduct.asin,
-      seo_title: `${topProduct.title} - 90 dagars prisanalys | PrisJägaren`,
+      seo_title: `${topProduct.title} - 90 dagars prisanalys | Prisfall`,
       seo_description: `Djupgående prisanalys för ${topProduct.title}. Är det bra att köpa nu? Se prishistorik och rekommendation.`,
       featured_image_url: topProduct.image_url || null,
     });
@@ -225,7 +225,7 @@ Skriv 400-500 ord i HTML-format med <h1>, <h2>, <p>-taggar.`;
     excerpt: `Månadsrapport om prisutvecklingen för ${rotatedCategory} på Amazon.se. Vilka produkter är billiga nu?`,
     category: rotatedCategory,
     products_mentioned: categoryProducts.map(p => p.asin).join(","),
-    seo_title: `${categoryLabel} prisrapport April 2026 - Amazon.se | PrisJägaren`,
+    seo_title: `${categoryLabel} prisrapport April 2026 - Amazon.se | Prisfall`,
     seo_description: `Månadsrapport: Prisdata för ${rotatedCategory} på Amazon.se. Se vilka produkter som är billiga just nu.`,
     featured_image_url: categoryProducts[0]?.image_url || null,
   });

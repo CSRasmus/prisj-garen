@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 const STEPS = [
   {
     emoji: "🏷️",
-    title: "Välkommen till PrisJägaren!",
+    title: "Välkommen till Prisfall!",
     body: "Du kommer aldrig mer behöva betala för mycket på Amazon. Vi håller koll åt dig — helt gratis.",
     cta: "Nästa →",
   },
@@ -20,7 +20,7 @@ const STEPS = [
   {
     emoji: "📱",
     title: "Spara som app på din telefon",
-    body: "PrisJägaren fungerar som en riktig app — utan App Store!",
+    body: "Prisfall fungerar som en riktig app — utan App Store!",
     cta: "Nästa →",
   },
   {

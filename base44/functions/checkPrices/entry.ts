@@ -131,7 +131,7 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
             </table>
             <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
               <a href="${amazonUrl}" style="display: inline-block; background: #2d9a5f; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Köp nu på Amazon →</a>
-              <a href="${appUrl}" style="display: inline-block; background: #f0f0f0; color: #333; padding: 12px 24px; border-radius: 8px; text-decoration: none;">Visa i PrisJägaren</a>
+              <a href="${appUrl}" style="display: inline-block; background: #f0f0f0; color: #333; padding: 12px 24px; border-radius: 8px; text-decoration: none;">Visa i Prisfall</a>
             </div>
             <div style="margin-top: 24px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
               <p style="margin: 0 0 10px; font-size: 14px; color: #555; font-weight: 600;">📣 Dela detta deal med en vän</p>
@@ -162,8 +162,8 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
             title: pushTitle,
             body: pushBody,
             tag: `price-drop-${product.id}`,
-            badge: "https://app.prisjagaren.se/favicon.ico",
-            data: { url: `https://app.prisjagaren.se/product/${product.id}` }
+            badge: "https://prisfall.se/favicon.ico",
+             data: { url: `https://prisfall.se/product/${product.id}` }
           };
           console.log(`Sending web push to ${product.created_by} for ${product.asin}`);
           // Note: Web push requires a VAPID key and push service integration

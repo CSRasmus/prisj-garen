@@ -10,7 +10,7 @@ function buildWelcomeEmailHtml(userName) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Välkommen till PrisJägaren</title>
+  <title>Välkommen till Prisfall</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f7f6;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f6;padding:32px 16px;">
@@ -78,7 +78,7 @@ function buildWelcomeEmailHtml(userName) {
                   <tr>
                     <td style="padding:8px 0;border-bottom:1px solid #dcfce7;">
                       <p style="margin:0;font-size:13px;color:#374151;">
-                        💳 <strong>Norwegian-kortet</strong> ger dig extra cashback på alla köp — perfekt kombination med PrisJägaren.
+                        💳 <strong>Norwegian-kortet</strong> ger dig extra cashback på alla köp — perfekt kombination med Prisfall.
                         <a href="https://www.norwegian.com/se/frequent-flyer/norwegian-mastercard/" style="color:#16a34a;font-weight:600;margin-left:4px;">Läs mer →</a>
                       </p>
                     </td>
