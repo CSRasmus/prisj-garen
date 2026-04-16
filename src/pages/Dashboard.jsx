@@ -18,10 +18,9 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const [showCelebration, setShowCelebration] = useState(false);
 
-  const { data: products, isLoading } = useQuery({
+  const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: () => base44.entities.Product.list("-created_date"),
-    initialData: [],
   });
 
   const deleteMutation = useMutation({

@@ -83,7 +83,9 @@ export default function AddProduct() {
       setFetchingPrice(true);
       try {
         await fetchProductPrice({ product_id: created.id, asin: created.asin, title: created.title });
-      } catch (_) {}
+      } catch (_) {
+        toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
+      }
       setFetchingPrice(false);
       queryClient.invalidateQueries({ queryKey: ["products"] });
       toast({ title: "Produkt tillagd!", description: "Priset är nu hämtat och bevakning startar." });

@@ -1,17 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ExternalLink, Clock, TrendingDown, TrendingUp, Package } from "lucide-react";
-import { format } from "date-fns";
+import { ArrowLeft, ExternalLink, Clock, TrendingDown, TrendingUp, Package, RefreshCw } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
 import { motion } from "framer-motion";
 import PriceChart from "@/components/products/PriceChart";
 import PriceBadge from "@/components/products/PriceBadge";
 import { formatPrice, getPriceStatus, buildAmazonUrl } from "@/lib/affiliateUtils";
+import { fetchProductPrice } from "@/functions/fetchProductPrice";
 
 function StatCard({ label, value, icon: Icon, highlight = false }) {
   return (
@@ -26,16 +27,15 @@ function StatCard({ label, value, icon: Icon, highlight = false }) {
 }
 
 export default function ProductDetail() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const pathParts = window.location.pathname.split("/");
-  const productId = pathParts[pathParts.length - 1];
+  const { id: productId } = useParams();
+  const [refreshing, setRefreshing] = useState(false);
+  const queryClient = useQueryClient();
 
-  const { data: products = [], isLoading: productsLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: () => base44.entities.Product.list(),
+  const { data: product, isLoading: productLoading } = useQuery({
+    queryKey: ["product", productId],
+    queryFn: () => base44.entities.Product.get(productId),
+    enabled: !!productId,
   });
-
-  const product = products.find((p) => p.id === productId);
 
   const { data: priceHistory = [], isLoading: historyLoading } = useQuery({
     queryKey: ["priceHistory", productId],
@@ -43,7 +43,16 @@ export default function ProductDetail() {
     enabled: !!productId,
   });
 
-  if (productsLoading || historyLoading) {
+  const handleRefreshPrice = async () => {
+    setRefreshing(true);
+    try {
+      await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
+      await queryClient.invalidateQueries({ queryKey: ["product", productId] });
+    } catch (_) {}
+    setRefreshing(false);
+  };
+
+  if (productLoading || historyLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-32" />
@@ -65,6 +74,9 @@ export default function ProductDetail() {
   }
 
   const status = getPriceStatus(product.current_price, product.lowest_price_90d, product.highest_price_90d);
+  const lastChecked = product.last_checked
+    ? formatDistanceToNow(new Date(product.last_checked), { addSuffix: true, locale: sv })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -99,13 +111,23 @@ export default function ProductDetail() {
                   </span>
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-4 flex items-center gap-3 flex-wrap">
                   <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer">
                     <Button size="lg" className="gap-2">
                       <ExternalLink className="w-4 h-4" />
                       Köp på Amazon
                     </Button>
                   </a>
+                  <Button size="lg" variant="outline" className="gap-2" onClick={handleRefreshPrice} disabled={refreshing}>
+                    <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                    {refreshing ? "Uppdaterar..." : "Uppdatera pris"}
+                  </Button>
+                  {lastChecked && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {lastChecked}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
