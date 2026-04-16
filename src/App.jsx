@@ -11,8 +11,6 @@ import InstallPrompt from '@/components/InstallPrompt';
 import Dashboard from '@/pages/Dashboard';
 import AddProduct from '@/pages/AddProduct';
 import ProductDetail from '@/pages/ProductDetail';
-import Premium from '@/pages/Premium';
-
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
@@ -39,7 +37,6 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/add" element={<AddProduct />} />
         <Route path="/product/:id" element={<ProductDetail />} />
-        <Route path="/premium" element={<Premium />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

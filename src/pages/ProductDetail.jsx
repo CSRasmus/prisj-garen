@@ -15,8 +15,6 @@ import { formatPrice, getPriceStatus, buildAmazonUrl } from "@/lib/affiliateUtil
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
 import { useToast } from "@/components/ui/use-toast";
 import TargetPriceField from "@/components/products/TargetPriceField";
-import { usePremium } from "@/lib/usePremium";
-
 function StatCard({ label, value, icon: Icon, highlight = false }) {
   return (
     <div className={`rounded-xl p-4 ${highlight ? "bg-accent" : "bg-secondary/50"}`}>
@@ -34,8 +32,6 @@ export default function ProductDetail() {
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
-  const { isPremium } = usePremium();
 
   const { data: product, isLoading: productLoading } = useQuery({
     queryKey: ["product", productId],
@@ -127,7 +123,6 @@ export default function ProductDetail() {
                 <div className="mt-3">
                   <TargetPriceField
                     product={product}
-                    isPremium={isPremium}
                     onUpdated={() => queryClient.invalidateQueries({ queryKey: ["product", productId] })}
                   />
                 </div>
