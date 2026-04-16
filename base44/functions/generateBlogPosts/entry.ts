@@ -156,17 +156,19 @@ async function generateArticles(base44) {
 
   Skriv 500 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
 
-  const article1Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
+  let article1Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
     prompt: article1Prompt,
     model: "claude_sonnet_4_6",
   });
+  article1Response = article1Response.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
 
   const article1Slug = await checkAndAdjustSlug(base44, generateSlug("Veckans prisanalys Amazon"));
+  const article1Excerpt = `Denna vecka sjönk priserna på topp-produkter på Amazon.se. Se vår analys av verklig prisdata.`.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
   articles.push({
     title: `Veckans prisanalys: Amazon-priser sjönk ${Math.round(weeklyTopProducts[0]?.metrics?.percentFromAvg || 0)}% (Vecka ${weekNumber})`,
     slug: article1Slug,
     content: article1Response + DISCLAIMER,
-    excerpt: `Denna vecka sjönk priserna på topp-produkter på Amazon.se. Se vår analys av verklig prisdata.`,
+    excerpt: article1Excerpt,
     category: "deals",
     products_mentioned: weeklyTopProducts.map(p => p.asin).join(","),
     seo_title: `Amazon prisanalys vecka ${weekNumber} - Verklig prisdata Sverige | Prisfall`,
@@ -205,17 +207,19 @@ Avsluta med grön CTA-box:
 
 Skriv 400-600 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
 
-    const article2Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    let article2Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: article2Prompt,
       model: "claude_sonnet_4_6",
     });
+    article2Response = article2Response.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
 
     const article2Slug = await checkAndAdjustSlug(base44, generateSlug(topProduct.title));
+    const article2Excerpt = `Djupanalys av ${topProduct.title} baserad på 90 dagars prisdata från Amazon.se.`.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
     articles.push({
       title: `${topProduct.title}: Är det bra att köpa nu? (90-dagars prisanalys)`,
       slug: article2Slug,
       content: article2Response + DISCLAIMER,
-      excerpt: `Djupanalys av ${topProduct.title} baserad på 90 dagars prisdata från Amazon.se.`,
+      excerpt: article2Excerpt,
       category: "elektronik",
       products_mentioned: topProduct.asin,
       seo_title: `${topProduct.title} - 90 dagars prisanalys | Prisfall`,
@@ -254,18 +258,20 @@ Skriv 400-600 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
 
   Skriv 400-500 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
 
-  const article3Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
+  let article3Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
     prompt: article3Prompt,
     model: "claude_sonnet_4_6",
   });
+  article3Response = article3Response.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
 
   const categoryLabel = { husdjur: "Husdjur", elektronik: "Elektronik", hem: "Hem", deals: "Deals" }[rotatedCategory];
   const article3Slug = await checkAndAdjustSlug(base44, generateSlug(`${categoryLabel} prisrapport Amazon`));
+  const article3Excerpt = `Månadsrapport om prisutvecklingen för ${rotatedCategory} på Amazon.se. Vilka produkter är billiga nu?`.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
   articles.push({
     title: `${categoryLabel}-prisrapport: April 2026 – Prisdata från Amazon.se`,
     slug: article3Slug,
     content: article3Response + DISCLAIMER,
-    excerpt: `Månadsrapport om prisutvecklingen för ${rotatedCategory} på Amazon.se. Vilka produkter är billiga nu?`,
+    excerpt: article3Excerpt,
     category: rotatedCategory,
     products_mentioned: categoryProducts.map(p => p.asin).join(","),
     seo_title: `${categoryLabel} prisrapport April 2026 - Amazon.se | Prisfall`,

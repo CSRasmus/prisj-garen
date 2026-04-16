@@ -101,7 +101,7 @@ export default function BlogPost() {
           {/* Main content */}
           <div 
             className="prose prose-lg prose-invert max-w-none space-y-6"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{ __html: post.content?.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim() || '' }}
           />
 
           {/* Share buttons */}
