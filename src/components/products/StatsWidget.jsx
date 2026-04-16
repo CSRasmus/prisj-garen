@@ -11,7 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export default function StatsWidget({ products }) {
+export default function StatsWidget({ products, maxProducts = 10 }) {
   const totalWatched = products.length;
   const lowPriceItems = products.filter((p) => p.is_low_price);
   const lowPriceCount = lowPriceItems.length;
@@ -67,7 +67,7 @@ export default function StatsWidget({ products }) {
     {
       icon: Eye,
       label: "Bevakade produkter",
-      value: `${totalWatched}/10`,
+      value: `${totalWatched}/${maxProducts}`,
       color: "text-foreground",
       highlight: false,
     },

@@ -92,7 +92,7 @@ export default function Dashboard() {
         )}
       </motion.div>
 
-      <StatsWidget products={products} />
+      <StatsWidget products={products} maxProducts={maxProducts} />
 
       <DealsSection products={products} />
 

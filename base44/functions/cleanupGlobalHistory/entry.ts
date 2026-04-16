@@ -4,24 +4,28 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (user?.role !== 'admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-    }
-
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 365);
-    const cutoffIso = cutoff.toISOString();
-
-    // Fetch all old entries
-    const old = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
-      { checked_at: { $lt: cutoffIso } }, "checked_at", 1000
-    );
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 365);
 
     let deleted = 0;
-    for (const entry of old) {
-      await base44.asServiceRole.entities.GlobalPriceHistory.delete(entry.id);
-      deleted++;
+    let batchSize = 1000;
+
+    // Loop until no more old entries exist (handles >1000 records)
+    while (true) {
+      const all = await base44.asServiceRole.entities.GlobalPriceHistory.list("-checked_at", batchSize);
+      const old = all.filter(h => new Date(h.checked_at) < cutoffDate);
+
+      if (old.length === 0) break;
+
+      for (const entry of old) {
+        await base44.asServiceRole.entities.GlobalPriceHistory.delete(entry.id);
+        deleted++;
+      }
+
+      console.log(`Deleted batch of ${old.length}, total so far: ${deleted}`);
+
+      // If we got fewer than batchSize total records, we've processed everything
+      if (all.length < batchSize) break;
     }
 
     console.log(`Cleanup complete: deleted ${deleted} GlobalPriceHistory entries older than 365 days`);

@@ -14,6 +14,7 @@ import PriceChart from "@/components/products/PriceChart";
 import PriceBadge from "@/components/products/PriceBadge";
 import { formatPrice, getPriceStatus, buildAmazonUrl } from "@/lib/affiliateUtils";
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
+import { getWatcherCount } from "@/functions/getWatcherCount";
 import { useToast } from "@/components/ui/use-toast";
 import TargetPriceField from "@/components/products/TargetPriceField";
 function StatCard({ label, value, icon: Icon, highlight = false }) {
@@ -44,7 +45,7 @@ export default function ProductDetail() {
     queryKey: ["priceHistory", productId, product?.asin],
     queryFn: async () => {
       if (!product?.asin) return [];
-      const global = await base44.entities.GlobalPriceHistory.filter({ asin: product.asin }, "-checked_at", 365);
+      const global = await base44.entities.GlobalPriceHistory.filter({ asin: product.asin, amazon_domain: "amazon.se" }, "-checked_at", 365);
       if (global.length > 0) return global.map(h => ({ ...h, product_id: productId }));
       // Fallback to user's PriceHistory
       return base44.entities.PriceHistory.filter({ product_id: productId }, "-checked_at", 365);
@@ -56,8 +57,8 @@ export default function ProductDetail() {
     queryKey: ["watcherCount", product?.asin],
     queryFn: async () => {
       if (!product?.asin) return 1;
-      const watchers = await base44.entities.Product.filter({ asin: product.asin });
-      return watchers.length;
+      const res = await getWatcherCount({ asin: product.asin });
+      return res.data?.count ?? 1;
     },
     enabled: !!product?.asin,
   });
@@ -68,7 +69,7 @@ export default function ProductDetail() {
       await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["product", productId] }),
-        queryClient.invalidateQueries({ queryKey: ["priceHistory", productId] }),
+        queryClient.invalidateQueries({ queryKey: ["priceHistory", productId, product?.asin] }),
         queryClient.invalidateQueries({ queryKey: ["products"] }),
       ]);
       toast({ title: "Priset har uppdaterats!" });

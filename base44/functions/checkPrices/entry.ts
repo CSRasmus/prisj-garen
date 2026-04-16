@@ -153,8 +153,20 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
   return { price, isLowPrice, notified };
 }
 
+const CRON_SECRET = Deno.env.get("CRON_SECRET");
+
 Deno.serve(async (req) => {
   try {
+    // Allow Base44 internal scheduler (no secret needed) OR external calls with correct secret
+    if (CRON_SECRET) {
+      const url = new URL(req.url);
+      const provided = url.searchParams.get("secret");
+      if (provided !== CRON_SECRET) {
+        console.warn("checkPrices: unauthorized call blocked");
+        return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     const base44 = createClientFromRequest(req);
     const products = await base44.asServiceRole.entities.Product.list();
 
