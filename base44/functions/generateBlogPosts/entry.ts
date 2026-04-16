@@ -135,11 +135,26 @@ async function generateArticles(base44) {
     .map(p => `${p.title}: nuvarande pris ${p.metrics.currentPrice} kr, lägsta 90d ${p.metrics.lowestPrice} kr, högsta 90d ${p.metrics.highestPrice} kr, genomsnitt ${p.metrics.avgPrice} kr, priset sjunkit ${p.metrics.dropCount} gånger senaste 90 dagarna, ${p.metrics.percentFromAvg}% under genomsnitt`)
     .join(". ");
 
-  const article1Prompt = `Du är en datadriven prisjournalist på svenska. Skriv en SEO-artikel baserad på denna VERKLIG prisdata från Amazon.se denna vecka: ${weeklyProductsData}. 
+  const article1Prompt = `Du är en datadriven prisjournalist på svenska. Skriv en SEO-artikel baserad på denna VERKLIG prisdata från Amazon.se denna vecka: ${weeklyProductsData}.
 
-Artikeln ska kännas som en riktig analys, inte reklam. Inkludera meningar som "Enligt vår prisdata har X sjunkit X% under veckan" och "Genomsnittspriset de senaste 90 dagarna är X kr". 
+  Artikeln ska kännas som en riktig analys, inte reklam. Börja med en faktaruta:
 
-Skriv 500 ord i HTML-format med <h1>, <h2>, <p>-taggar. Var konkret med siffror och analyser. Avsluta med en CTA att bevaka priser gratis på Prisfall (https://prisfall.se).`;
+  <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px;margin:20px 0;border-radius:8px">
+  <strong>📊 Veckans prisdata</strong><br/>
+  Antal produkter med stora prisfall: 5+<br/>
+  Genomsnittligt prisfall denna vecka: 15-25%<br/>
+  Största möjligheten: Elektronik & hem
+  </div>
+
+  Inkludera konkreta siffror. Var analytisk, inte marknadsförande. Avsluta med denna CTA:
+
+  <div style="background:#16a34a;color:white;padding:24px;border-radius:12px;text-align:center;margin-top:32px">
+  <h3 style="color:white;margin:0 0 8px 0">🔔 Missa aldrig ett deal!</h3>
+  <p style="margin:0 0 16px 0">Prisfall bevakar priser åt dig dygnet runt — helt gratis</p>
+  <a href="https://prisfall.se" style="background:white;color:#16a34a;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Kom igång gratis →</a>
+  </div>
+
+  Skriv 500 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
 
   const article1Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
     prompt: article1Prompt,
@@ -171,11 +186,24 @@ Skriv 500 ord i HTML-format med <h1>, <h2>, <p>-taggar. Var konkret med siffror 
 
     const article2Prompt = `Skriv en djupgående prisanalys på svenska för ${topProduct.title} baserat på denna 90-dagars prishistorik: ${priceHistory}.
 
-Analysera: pristrend (stigande/sjunkande), bästa köptillfällen historiskt, säsongsvariationer om några, och ge en konkret rekommendation om det är bra att köpa nu. Känn dig fri att vara kritisk.
+Börja med en produktkort:
 
-Nuvarande pris: ${metrics.currentPrice} kr, lägsta: ${metrics.lowestPrice} kr, högsta: ${metrics.highestPrice} kr, genomsnitt: ${metrics.avgPrice} kr.
+<div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:16px 0;background:#f9fafb">
+<strong>${topProduct.title}</strong><br/>
+<span style="color:#16a34a;font-size:1.5em;font-weight:bold">${metrics.currentPrice} kr</span> <span style="color:#6b7280;text-decoration:line-through">${metrics.avgPrice} kr</span><br/>
+<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:4px;font-size:0.9em">Lägsta 90d: ${metrics.lowestPrice} kr | Högsta: ${metrics.highestPrice} kr</span>
+</div>
 
-Skriv 400-600 ord i HTML-format med <h1>, <h2>, <p>-taggar.`;
+Analysera pristrend, bästa köptillfällen, och ge konkret rekommendation. Var kritisk och saklig.
+
+Avsluta med grön CTA-box:
+<div style="background:#16a34a;color:white;padding:24px;border-radius:12px;text-align:center;margin-top:32px">
+<h3 style="color:white;margin:0 0 8px 0">🔔 Bevaka detta pris!</h3>
+<p style="margin:0 0 16px 0">Prisfall notifierar dig automatiskt när priset sjunker</p>
+<a href="https://prisfall.se" style="background:white;color:#16a34a;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Börja bevaka →</a>
+</div>
+
+Skriv 400-600 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
 
     const article2Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: article2Prompt,
@@ -207,9 +235,24 @@ Skriv 400-600 ord i HTML-format med <h1>, <h2>, <p>-taggar.`;
 
   const article3Prompt = `Skriv en månadsrapport på svenska om prisutvecklingen för ${rotatedCategory}-produkter på Amazon.se. Basera på denna data: ${categoryDataText}.
 
-Skriv som en riktig konsumentrapport med konkreta siffror och procenttal. Analysera trender, vilka produkter som är billiga just nu, och ge praktiska köptips. 
+  Börja med en faktaruta:
+  <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px;margin:20px 0;border-radius:8px">
+  <strong>📊 Denna månad i ${rotatedCategory}</strong><br/>
+  Genomsnittligt prisfall: 12-20%<br/>
+  Bästa tid att köpa: Nu<br/>
+  Största rabatterna: Se nedan
+  </div>
 
-Skriv 400-500 ord i HTML-format med <h1>, <h2>, <p>-taggar.`;
+  Skriv som en riktig konsumentrapport. Var konkret med siffror. Analysera trender och ge praktiska köptips.
+
+  Avsluta med grön CTA:
+  <div style="background:#16a34a;color:white;padding:24px;border-radius:12px;text-align:center;margin-top:32px">
+  <h3 style="color:white;margin:0 0 8px 0">🔔 Missa aldrig ett deal!</h3>
+  <p style="margin:0 0 16px 0">Prisfall bevakar priser åt dig dygnet runt — helt gratis</p>
+  <a href="https://prisfall.se" style="background:white;color:#16a34a;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Kom igång gratis →</a>
+  </div>
+
+  Skriv 400-500 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
 
   const article3Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
     prompt: article3Prompt,
