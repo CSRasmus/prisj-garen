@@ -49,14 +49,19 @@ export default function ProductDetail() {
     setRefreshing(true);
     try {
       const res = await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
-      if (res.data?.found === false) {
-        toast({ title: "Kunde inte hitta priset", description: "Försök igen om en stund.", variant: "destructive" });
+      const data = res?.data ?? res;
+      if (data?.found === false) {
+        toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
       } else {
-        await queryClient.invalidateQueries({ queryKey: ["product", productId] });
-        toast({ title: "Pris uppdaterat!" });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["product", productId] }),
+          queryClient.invalidateQueries({ queryKey: ["priceHistory", productId] }),
+          queryClient.invalidateQueries({ queryKey: ["products"] }),
+        ]);
+        toast({ title: "Priset har uppdaterats!" });
       }
     } catch (_) {
-      toast({ title: "Fel vid uppdatering", description: "Försök igen.", variant: "destructive" });
+      toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
     }
     setRefreshing(false);
   };
