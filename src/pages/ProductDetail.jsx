@@ -48,18 +48,13 @@ export default function ProductDetail() {
   const handleRefreshPrice = async () => {
     setRefreshing(true);
     try {
-      const res = await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
-      const data = res?.data ?? res;
-      if (data?.found === false) {
-        toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
-      } else {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["product", productId] }),
-          queryClient.invalidateQueries({ queryKey: ["priceHistory", productId] }),
-          queryClient.invalidateQueries({ queryKey: ["products"] }),
-        ]);
-        toast({ title: "Priset har uppdaterats!" });
-      }
+      await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["product", productId] }),
+        queryClient.invalidateQueries({ queryKey: ["priceHistory", productId] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+      ]);
+      toast({ title: "Priset har uppdaterats!" });
     } catch (_) {
       toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
     }

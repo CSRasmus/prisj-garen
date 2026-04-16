@@ -23,17 +23,13 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
     setRefreshing(true);
     const prevLow = product.is_low_price;
     try {
-      const res = await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
-      if (res.data?.found === false) {
-        toast({ title: "Kunde inte hitta priset", description: "Försök igen om en stund.", variant: "destructive" });
-      } else {
-        await queryClient.invalidateQueries({ queryKey: ["products"] });
-        const updated = queryClient.getQueryData(["products"])?.find(p => p.id === product.id);
-        if (updated?.is_low_price && !prevLow) onPriceDrop?.();
-        toast({ title: "Pris uppdaterat!" });
-      }
+      await fetchProductPrice({ product_id: product.id, asin: product.asin, title: product.title });
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      const updated = queryClient.getQueryData(["products"])?.find(p => p.id === product.id);
+      if (updated?.is_low_price && !prevLow) onPriceDrop?.();
+      toast({ title: "Priset har uppdaterats!" });
     } catch (_) {
-      toast({ title: "Fel vid uppdatering", description: "Försök igen.", variant: "destructive" });
+      toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
     }
     setRefreshing(false);
   };
