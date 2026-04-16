@@ -1,0 +1,63 @@
+{
+  "name": "BlogPost",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Article title"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-friendly slug (e.g., airpods-pro-price-history)"
+    },
+    "content": {
+      "type": "string",
+      "description": "HTML content of the article"
+    },
+    "excerpt": {
+      "type": "string",
+      "description": "Short summary (150 characters)"
+    },
+    "featured_image_url": {
+      "type": "string",
+      "description": "Featured image URL"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "husdjur",
+        "elektronik",
+        "hem",
+        "deals"
+      ],
+      "description": "Article category"
+    },
+    "products_mentioned": {
+      "type": "string",
+      "description": "Comma-separated ASINs"
+    },
+    "seo_title": {
+      "type": "string",
+      "description": "SEO meta title"
+    },
+    "seo_description": {
+      "type": "string",
+      "description": "SEO meta description"
+    },
+    "published": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether article is published"
+    },
+    "views": {
+      "type": "number",
+      "default": 0,
+      "description": "View count"
+    }
+  },
+  "required": [
+    "title",
+    "slug",
+    "content"
+  ]
+}

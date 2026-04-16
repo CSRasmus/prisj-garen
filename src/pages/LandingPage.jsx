@@ -125,7 +125,10 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <span className="text-lg font-extrabold text-foreground tracking-tight">🏷️ PrisJägaren</span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <a href="/blogg" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Blogg
+            </a>
             <button onClick={handleLogin} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Logga in
             </button>
@@ -401,11 +404,40 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
+      {/* Recent Blog Articles */}
+      <section className="py-20">
+        <div className="max-w-4xl mx-auto px-4 space-y-10">
+          <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">Senaste från blogg</h2>
+            <p className="text-muted-foreground mt-2">Läs våra senaste artiklar om deals och pristips</p>
+          </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <motion.a
+              href="/blogg"
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow"
+            >
+              <div className="text-3xl mb-3">📰</div>
+              <p className="font-semibold text-foreground">Se alla artiklar</p>
+              <p className="text-sm text-muted-foreground mt-2">Utforska veckans deals, köpguider och pristips →</p>
+            </motion.a>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-border py-8">
-        <div className="max-w-5xl mx-auto px-4 text-center text-xs text-muted-foreground space-y-1">
-          <p>🏷️ PrisJägaren — Prisbevakning för Amazon.se</p>
-          <p>Vi använder affiliate-länkar. När du köper via oss får vi en liten provision — utan extra kostnad för dig.</p>
+        <div className="max-w-5xl mx-auto px-4 text-center text-xs text-muted-foreground space-y-3">
+          <div className="flex justify-center gap-6">
+            <a href="/blogg" className="hover:text-foreground transition-colors">Blogg</a>
+            <a href="/" className="hover:text-foreground transition-colors">Start</a>
+          </div>
+          <div className="space-y-1">
+            <p>🏷️ PrisJägaren — Prisbevakning för Amazon.se</p>
+            <p>Vi använder affiliate-länkar. När du köper via oss får vi en liten provision — utan extra kostnad för dig.</p>
+          </div>
         </div>
       </footer>
     </div>

@@ -13,6 +13,8 @@ import LandingPage from '@/pages/LandingPage';
 import Dashboard from '@/pages/Dashboard';
 import AddProduct from '@/pages/AddProduct';
 import ProductDetail from '@/pages/ProductDetail';
+import Blog from '@/pages/Blog';
+import BlogPost from '@/pages/BlogPost';
 import { handleReferral } from '@/functions/handleReferral';
 
 // Capture referral code from URL and store in localStorage
@@ -50,6 +52,10 @@ const AuthenticatedApp = () => {
         path="/"
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />}
       />
+
+      {/* Public blog routes */}
+      <Route path="/blogg" element={<Blog />} />
+      <Route path="/blogg/:slug" element={<BlogPost />} />
 
       {/* Authenticated app routes */}
       <Route element={<AppLayout />}>
