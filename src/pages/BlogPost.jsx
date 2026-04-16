@@ -137,7 +137,7 @@ export default function BlogPost() {
               className="bg-primary/10 border border-primary/20 rounded-xl p-6 text-center space-y-3"
             >
               <h3 className="font-bold text-lg text-foreground">Vill du aldrig missa ett deal?</h3>
-              <p className="text-muted-foreground">Bevaka priser gratis på PrisJägaren — get notified instantly när priset sjunker!</p>
+              <p className="text-muted-foreground">Bevaka priser gratis på PrisJägaren — få notis direkt när priset sjunker!</p>
               <Link to="/add">
                 <Button className="bg-primary">Börja bevaka nu →</Button>
               </Link>
@@ -155,7 +155,13 @@ export default function BlogPost() {
                 <div className="grid gap-4">
                   {relatedProducts.map(p => (
                     <div key={p.id} className="bg-card border border-border rounded-lg p-4 flex gap-4">
-                      <img src={p.image_url} alt={p.title} className="w-20 h-20 object-contain rounded" />
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.title} className="w-20 h-20 object-contain rounded" />
+                      ) : (
+                        <div className="w-20 h-20 rounded bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-2xl font-bold text-primary">{p.title.charAt(0).toUpperCase()}</span>
+                        </div>
+                      )}
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
                           <p className="font-semibold text-foreground">{p.title}</p>

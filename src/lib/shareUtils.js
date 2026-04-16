@@ -1,4 +1,4 @@
-const APP_URL = "https://priskoll.base44.app";
+const APP_URL = "https://prisfall.se";
 
 export function buildShareText(product) {
   const priceDiff = product.highest_price_90d && product.current_price

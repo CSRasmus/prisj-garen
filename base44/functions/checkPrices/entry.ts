@@ -112,7 +112,7 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
     const alreadyNotifiedRecently = lastNotified && lastNotified > twentyFourHoursAgo;
 
     if (!alreadyNotifiedRecently) {
-      const appUrl = `https://priskoll.base44.app/product/${product.id}`;
+      const appUrl = `https://prisfall.se/product/${product.id}`;
       const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`;
       const shareText = encodeURIComponent(`🔥 Prisfall på Amazon!\n\n${product.title} är nu ${price} kr!\n\nHitta fler deals: https://priskoll.base44.app`);
       const whatsappUrl = `https://wa.me/?text=${shareText}`;

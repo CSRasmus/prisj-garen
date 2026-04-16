@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const APP_URL = "https://app.prisjagaren.se";
+const APP_URL = "https://prisfall.se";
 
 function buildWelcomeEmailHtml(userName) {
   const firstName = userName ? userName.split(" ")[0] : "där";

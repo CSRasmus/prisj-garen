@@ -12,12 +12,11 @@ function generateSlug(title) {
 async function checkAndAdjustSlug(base44, baseSlug) {
   let slug = baseSlug;
   let exists = await base44.asServiceRole.entities.BlogPost.filter({ slug });
-  let counter = 1;
   while (exists.length > 0) {
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    slug = `${baseSlug}-${today}`;
+    const random = Math.random().toString(36).substr(2, 4);
+    slug = `${baseSlug}-${today}-${random}`;
     exists = await base44.asServiceRole.entities.BlogPost.filter({ slug });
-    counter++;
   }
   return slug;
 }
@@ -140,7 +139,7 @@ async function generateArticles(base44) {
 
 Artikeln ska kännas som en riktig analys, inte reklam. Inkludera meningar som "Enligt vår prisdata har X sjunkit X% under veckan" och "Genomsnittspriset de senaste 90 dagarna är X kr". 
 
-Skriv 500 ord i HTML-format med <h1>, <h2>, <p>-taggar. Var konkret med siffror och analyser. Avsluta med en CTA att bevaka priser gratis på PrisJägaren.`;
+Skriv 500 ord i HTML-format med <h1>, <h2>, <p>-taggar. Var konkret med siffror och analyser. Avsluta med en CTA att bevaka priser gratis på PrisJägaren (https://prisfall.se).`;
 
   const article1Response = await base44.asServiceRole.integrations.Core.InvokeLLM({
     prompt: article1Prompt,
