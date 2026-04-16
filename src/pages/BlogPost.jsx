@@ -31,14 +31,7 @@ export default function BlogPost() {
     fetchPost();
   }, [slug]);
 
-  // Increment views (fire and forget)
-  useEffect(() => {
-    if (post) {
-      base44.asServiceRole.entities.BlogPost.update(post.id, { 
-        views: (post.views || 0) + 1 
-      }).catch(() => {});
-    }
-  }, [post?.id]);
+
 
   if (loading) {
     return (
