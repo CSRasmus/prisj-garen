@@ -129,12 +129,12 @@ export default function ProductDetail() {
 
                 <div className="mt-4 flex items-center gap-3 flex-wrap">
                   <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer">
-                    <Button size="lg" className="gap-2">
+                    <Button className="h-12 px-6 text-base gap-2">
                       <ExternalLink className="w-4 h-4" />
                       Köp på Amazon
                     </Button>
                   </a>
-                  <Button size="lg" variant="outline" className="gap-2" onClick={handleRefreshPrice} disabled={refreshing}>
+                  <Button className="h-12 px-5 text-base gap-2" variant="outline" onClick={handleRefreshPrice} disabled={refreshing}>
                     <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
                     {refreshing ? "Uppdaterar..." : "Uppdatera pris"}
                   </Button>

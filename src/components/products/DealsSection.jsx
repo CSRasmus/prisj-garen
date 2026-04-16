@@ -64,8 +64,8 @@ export default function DealsSection({ products }) {
                   -{dropPct}% ({formatPrice(drop, product.currency)})
                 </span>
                 <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer">
-                  <Button size="sm" className="h-7 text-xs gap-1 px-3">
-                    <ExternalLink className="w-3 h-3" />
+                  <Button className="h-11 text-sm gap-1.5 px-4">
+                    <ExternalLink className="w-3.5 h-3.5" />
                     Köp
                   </Button>
                 </a>

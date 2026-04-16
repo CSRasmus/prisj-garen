@@ -96,30 +96,35 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
 
             <div className="mt-3 flex items-center gap-2 flex-wrap">
               <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                <Button size="sm" variant={status === "low" ? "default" : "outline"} className="gap-1.5 h-8 text-xs">
-                  <ExternalLink className="w-3 h-3" />
+                <Button variant={status === "low" ? "default" : "outline"} className="gap-1.5 h-11 px-4 text-sm">
+                  <ExternalLink className="w-3.5 h-3.5" />
                   Köp nu
                 </Button>
               </a>
               <Button
-                size="sm" variant="ghost"
-                className="h-8 text-xs gap-1.5 text-muted-foreground"
+                variant="ghost"
+                className="h-10 text-xs gap-1.5 text-muted-foreground px-3"
                 disabled={refreshing}
                 onClick={handleRefresh}
               >
                 <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
                 {refreshing ? "Kollar..." : "Uppdatera"}
               </Button>
+              <div className="flex flex-col items-start">
+                <Button
+                  variant="ghost"
+                  className="h-10 text-xs gap-1.5 text-muted-foreground px-3"
+                  onClick={(e) => { e.stopPropagation(); onToggleNotify(product); }}
+                >
+                  {product.notify_on_drop ? <><Bell className="w-3 h-3" /> Notis på</> : <><BellOff className="w-3 h-3" /> Notis av</>}
+                </Button>
+                {product.notify_on_drop && (
+                  <span className="text-[10px] text-muted-foreground px-3 -mt-1">Via e-post</span>
+                )}
+              </div>
               <Button
-                size="sm" variant="ghost"
-                className="h-8 text-xs gap-1.5 text-muted-foreground"
-                onClick={(e) => { e.stopPropagation(); onToggleNotify(product); }}
-              >
-                {product.notify_on_drop ? <><Bell className="w-3 h-3" /> Notis på</> : <><BellOff className="w-3 h-3" /> Notis av</>}
-              </Button>
-              <Button
-                size="sm" variant="ghost"
-                className="h-8 text-xs text-destructive hover:text-destructive gap-1.5"
+                variant="ghost"
+                className="h-10 text-xs text-destructive hover:text-destructive gap-1.5 px-3"
                 onClick={(e) => { e.stopPropagation(); onDelete(product); }}
               >
                 <Trash2 className="w-3 h-3" />

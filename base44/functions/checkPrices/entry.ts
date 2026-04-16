@@ -74,7 +74,7 @@ async function fetchAndSavePrice(base44, product) {
 
     if (!alreadyNotifiedRecently) {
       const appUrl = `https://priskoll.base44.app/product/${product.id}`;
-      const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`;
+      const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`; // affiliate tag synced with affiliateUtils.js
       await base44.asServiceRole.integrations.Core.SendEmail({
         to: product.created_by,
         subject: `${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}!`,
