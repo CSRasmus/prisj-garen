@@ -27,6 +27,11 @@
       "type": "boolean",
       "default": false,
       "description": "Whether the welcome email has been sent to this user"
+    },
+    "last_notified": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time a price drop notification email was sent to this user"
     }
   },
   "required": [

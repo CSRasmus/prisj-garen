@@ -93,91 +93,111 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
   const allPrices = [...globalHistory.map(h => h.price), price].filter(v => v > 0);
   const lowestPrice = Math.min(...allPrices);
   const highestPrice = Math.max(...allPrices);
+  const avgPrice = Math.round(allPrices.reduce((a, b) => a + b, 0) / allPrices.length);
   const isLowPrice = price <= lowestPrice * 1.05;
+
+  // Calculate percentage drop from average
+  const percentFromAvg = avgPrice > 0 ? ((avgPrice - price) / avgPrice) * 100 : 0;
 
   const updateData = { current_price: price, currency, lowest_price_90d: lowestPrice, highest_price_90d: highestPrice, is_low_price: isLowPrice, last_checked: now };
   if (p.main_image?.link) updateData.image_url = p.main_image.link;
 
   await base44.asServiceRole.entities.Product.update(product.id, updateData);
 
-  // Determine trigger: target price OR automatic low-price logic
+  // Determine if this product qualifies for notification
   const hasTargetPrice = product.target_price && product.target_price > 0;
-  const priceTrigger = hasTargetPrice ? price <= product.target_price : isLowPrice;
-  const shouldNotify = priceTrigger && product.notify_on_drop && product.created_by;
-  let notified = false;
+  const meetsTargetPrice = hasTargetPrice && price <= product.target_price;
+  const meetsPctThreshold = !hasTargetPrice && percentFromAvg >= 5;
+  const qualifies = (meetsTargetPrice || meetsPctThreshold) && product.notify_on_drop && product.created_by;
 
-  if (shouldNotify) {
-    const lastNotified = product.last_notified ? new Date(product.last_notified) : null;
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const alreadyNotifiedRecently = lastNotified && lastNotified > twentyFourHoursAgo;
+  return {
+    price,
+    isLowPrice,
+    avgPrice,
+    lowestPrice,
+    highestPrice,
+    percentFromAvg,
+    qualifies,
+    hasTargetPrice,
+    currency,
+    imageUrl: p.main_image?.link || product.image_url || null,
+  };
+}
 
-    if (!alreadyNotifiedRecently) {
-      const appUrl = `https://prisfall.se/product/${product.id}`;
-      const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`;
-      const shareText = encodeURIComponent(`🔥 Prisfall på Amazon!\n\n${product.title} är nu ${price} kr!\n\nHitta fler deals: https://prisfall.se`);
-      const whatsappUrl = `https://wa.me/?text=${shareText}`;
-      const smsUrl = `sms:?body=${shareText}`;
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: product.created_by,
-        subject: `${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}! — Prisfall`,
-        body: `
-          <div style="font-family: sans-serif; max-width: 600px; color: #222;">
-            <h2 style="color: #2d9a5f;">${hasTargetPrice ? "🎯 Ditt målpris är nått" : "🔥 Lågt pris"} på ${product.title}! (Prisfall)</h2>
-            <p>${hasTargetPrice ? `Priset har sjunkit under ditt målpris på ${product.target_price} kr!` : "Priset har sjunkit till en rekordlåg nivå de senaste 90 dagarna!"}</p>
-            <table style="border-collapse: collapse; margin: 16px 0;">
-              <tr><td style="padding: 4px 12px 4px 0; color: #666;">Nuvarande pris:</td><td style="font-weight: bold; font-size: 1.2em; color: #2d9a5f;">${price} ${currency}</td></tr>
-              <tr><td style="padding: 4px 12px 4px 0; color: #666;">Lägst 90 dagar:</td><td>${lowestPrice} ${currency}</td></tr>
-              <tr><td style="padding: 4px 12px 4px 0; color: #666;">Högst 90 dagar:</td><td>${highestPrice} ${currency}</td></tr>
-            </table>
-            <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
-              <a href="${amazonUrl}" style="display: inline-block; background: #2d9a5f; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Köp nu på Amazon →</a>
-              <a href="${appUrl}" style="display: inline-block; background: #f0f0f0; color: #333; padding: 12px 24px; border-radius: 8px; text-decoration: none;">Visa i Prisfall</a>
-            </div>
-            <div style="margin-top: 24px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 10px; font-size: 14px; color: #555; font-weight: 600;">📣 Dela detta deal med en vän</p>
-              <a href="${whatsappUrl}" style="display: inline-block; background: #25D366; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px; margin-right: 8px;">WhatsApp</a>
-              <a href="${smsUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px;">SMS</a>
-            </div>
-            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">Prisfall – Din prisbevakning för Amazon.se</p>
-          </div>
-        `
-      });
-      await base44.asServiceRole.entities.Product.update(product.id, { last_notified: now });
-      notified = true;
-      console.log(`Notified ${product.created_by} about low price on ${product.asin}`);
+// Build HTML for a single product row in the summary email
+function buildProductRow(product, result) {
+  const amazonUrl = `https://www.amazon.se/dp/${product.asin}?tag=priskoll-21`;
+  const appUrl = `https://prisfall.se/product/${product.id}`;
+  const discount = result.avgPrice > 0
+    ? Math.round(((result.avgPrice - result.price) / result.avgPrice) * 100)
+    : 0;
+  const imageHtml = result.imageUrl
+    ? `<img src="${result.imageUrl}" width="80" height="80" style="object-fit:contain;border-radius:8px;background:#f9fafb;padding:4px" />`
+    : `<div style="width:80px;height:80px;background:#16a34a;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:28px">${product.title.charAt(0)}</div>`;
 
-      // Send web push notification if user has a subscription
-      try {
-        const subscriptions = await base44.asServiceRole.entities.PushSubscription.filter(
-          { created_by: product.created_by },
-          "-created_date",
-          1
-        );
-        if (subscriptions.length > 0) {
-          const sub = subscriptions[0];
-          const subObj = JSON.parse(sub.subscription_json);
-          const pushTitle = "🔥 Prisfall på Amazon!";
-          const pushBody = `${product.title} är nu ${price} kr`;
-          const pushData = {
-            title: pushTitle,
-            body: pushBody,
-            tag: `price-drop-${product.id}`,
-            badge: "https://prisfall.se/favicon.ico",
-             data: { url: `https://prisfall.se/product/${product.id}` }
-          };
-          console.log(`Sending web push to ${product.created_by} for ${product.asin}`);
-          // Note: Web push requires a VAPID key and push service integration
-          // This is a placeholder for future implementation
-        }
-      } catch (pushErr) {
-        console.log(`Could not send web push: ${pushErr.message}`);
-      }
-    } else {
-      console.log(`Skipping notification for ${product.asin} — already notified within 24h`);
-    }
-  }
+  const badgeText = product.target_price && product.target_price > 0
+    ? `🎯 Målpris nått`
+    : `-${discount}% under normalpriser`;
 
-  return { price, isLowPrice, notified };
+  return `
+    <div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:12px 0;display:flex;gap:16px;align-items:flex-start;background:#fff">
+      ${imageHtml}
+      <div style="flex:1">
+        <strong style="display:block;margin-bottom:6px;font-size:15px">${product.title}</strong>
+        <span style="color:#16a34a;font-size:1.4em;font-weight:bold">${result.price} kr</span>
+        <span style="color:#9ca3af;text-decoration:line-through;margin-left:8px;font-size:0.9em">${result.avgPrice} kr</span>
+        <br/>
+        <span style="background:#dcfce7;color:#16a34a;padding:3px 8px;border-radius:4px;font-size:0.8em;display:inline-block;margin-top:6px">${badgeText}</span>
+        <br/>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <a href="${amazonUrl}" style="background:#16a34a;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px">Köp nu på Amazon →</a>
+          <a href="${appUrl}" style="background:#f3f4f6;color:#333;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:13px">Visa i Prisfall</a>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function sendSummaryEmail(base44, userEmail, qualifiedProducts, totalWatched) {
+  const count = qualifiedProducts.length;
+  const subject = count === 1
+    ? `🔥 Prisfall på ${qualifiedProducts[0].product.title}!`
+    : `🔥 ${count} nya prisfall på dina bevakade produkter!`;
+
+  const productRows = qualifiedProducts.map(({ product, result }) => buildProductRow(product, result)).join("");
+
+  const shareText = encodeURIComponent(`🔥 Prisfall på Amazon!\n\nHitta fler deals: https://prisfall.se`);
+  const whatsappUrl = `https://wa.me/?text=${shareText}`;
+
+  const body = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#222;background:#f9fafb;padding:24px;border-radius:16px">
+      <div style="text-align:center;margin-bottom:24px">
+        <h1 style="color:#16a34a;font-size:1.6em;margin:0">🔥 Prisfall</h1>
+        <p style="color:#6b7280;margin:4px 0 0">Din prisbevakning för Amazon.se</p>
+      </div>
+
+      <div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;border:1px solid #e5e7eb">
+        <h2 style="margin:0 0 16px;font-size:1.2em">${subject.replace(/^🔥 /, '')}</h2>
+        ${productRows}
+      </div>
+
+      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid #e5e7eb;text-align:center">
+        <p style="margin:0 0 12px;font-size:14px;color:#555;font-weight:600">📣 Dela dessa deals med en vän</p>
+        <a href="${whatsappUrl}" style="background:#25D366;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:13px">WhatsApp</a>
+      </div>
+
+      <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px">
+        Du bevakar ${totalWatched} produkt${totalWatched !== 1 ? 'er' : ''} totalt på Prisfall<br/>
+        <a href="https://prisfall.se/dashboard" style="color:#16a34a;text-decoration:none">Hantera dina bevakningar →</a>
+      </p>
+      <p style="text-align:center;color:#d1d5db;font-size:11px;margin-top:8px">Prisfall — prisfall.se</p>
+    </div>`;
+
+  await base44.asServiceRole.integrations.Core.SendEmail({
+    to: userEmail,
+    from_name: "Prisfall",
+    subject,
+    body,
+  });
 }
 
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
@@ -204,13 +224,28 @@ Deno.serve(async (req) => {
 
     let updated = 0;
     const errors = [];
-    const globalUpdatedAsins = new Set(); // Track which ASINs already got GlobalPriceHistory update this run
+    const globalUpdatedAsins = new Set();
+
+    // Map: userEmail -> { qualifiedProducts: [{product, result}], totalWatched: number }
+    const userNotifyMap = {};
 
     for (const product of products) {
+      // Track total watched per user
+      if (product.created_by) {
+        if (!userNotifyMap[product.created_by]) {
+          userNotifyMap[product.created_by] = { qualifiedProducts: [], totalWatched: 0 };
+        }
+        userNotifyMap[product.created_by].totalWatched++;
+      }
+
       try {
-        await fetchAndSavePrice(base44, product, globalUpdatedAsins);
+        const result = await fetchAndSavePrice(base44, product, globalUpdatedAsins);
         updated++;
-        console.log(`Updated ${product.asin} (${updated}/${products.length})`);
+        console.log(`Updated ${product.asin} (${updated}/${products.length}) — qualifies: ${result.qualifies}`);
+
+        if (result.qualifies && product.created_by) {
+          userNotifyMap[product.created_by].qualifiedProducts.push({ product, result });
+        }
       } catch (err) {
         console.error(`Failed to update ${product.asin}: ${err.message}`);
         errors.push({ asin: product.asin, error: err.message });
@@ -222,9 +257,42 @@ Deno.serve(async (req) => {
       }
     }
 
-    const msg = `Daily price update complete: ${updated}/${products.length} products updated`;
+    // Send one summary email per user (24h cooldown per user)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    let emailsSent = 0;
+
+    // Fetch all users to check last_notified on user level
+    const allUsers = await base44.asServiceRole.entities.User.list();
+    const userMap = {};
+    for (const u of allUsers) {
+      userMap[u.email] = u;
+    }
+
+    for (const [userEmail, { qualifiedProducts, totalWatched }] of Object.entries(userNotifyMap)) {
+      if (qualifiedProducts.length === 0) continue;
+
+      // Check user-level 24h cooldown
+      const user = userMap[userEmail];
+      const lastNotified = user?.last_notified ? new Date(user.last_notified) : null;
+      if (lastNotified && lastNotified > twentyFourHoursAgo) {
+        console.log(`Skipping email to ${userEmail} — already notified within 24h`);
+        continue;
+      }
+
+      await sendSummaryEmail(base44, userEmail, qualifiedProducts, totalWatched);
+
+      // Update last_notified on user record
+      if (user) {
+        await base44.asServiceRole.entities.User.update(user.id, { last_notified: new Date().toISOString() });
+      }
+
+      emailsSent++;
+      console.log(`Sent summary email to ${userEmail} with ${qualifiedProducts.length} deals`);
+    }
+
+    const msg = `Daily price update complete: ${updated}/${products.length} products updated, ${emailsSent} summary emails sent`;
     console.log(msg);
-    return Response.json({ message: msg, updated, total: products.length, errors });
+    return Response.json({ message: msg, updated, total: products.length, emailsSent, errors });
   } catch (error) {
     console.error("checkPrices fatal error:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
