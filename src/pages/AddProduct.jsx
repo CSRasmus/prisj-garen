@@ -14,11 +14,18 @@ import { motion } from "framer-motion";
 import { getMaxProducts } from "@/lib/shareUtils";
 import { buildAmazonUrl } from "@/lib/affiliateUtils";
 
+function isShortUrl(input) {
+  return /^https?:\/\/(a\.co|amzn\.to|amzn\.eu)\//i.test(input.trim());
+}
+
 function extractASIN(input) {
-  const asinRegex = /(?:\/dp\/|\/gp\/product\/|\/ASIN\/)([A-Z0-9]{10})/i;
-  const match = input.match(asinRegex);
+  const trimmed = input.trim();
+  // Standard ASIN patterns in URLs
+  const asinRegex = /(?:\/dp\/|\/gp\/product\/|\/ASIN\/)([A-Z0-9]{10})(?:[/?#]|$)/i;
+  const match = trimmed.match(asinRegex);
   if (match) return match[1].toUpperCase();
-  if (/^[A-Z0-9]{10}$/i.test(input.trim())) return input.trim().toUpperCase();
+  // Bare ASIN (10 alphanumeric chars)
+  if (/^[A-Z0-9]{10}$/i.test(trimmed)) return trimmed.toUpperCase();
   return null;
 }
 
@@ -49,8 +56,11 @@ export default function AddProduct() {
 
   const lookupMutation = useMutation({
     mutationFn: async (input) => {
+      if (isShortUrl(input)) {
+        throw new Error("Förkortad länk — öppna produkten i webbläsaren på Amazon.se och kopiera URL:en därifrån.");
+      }
       const extractedAsin = extractASIN(input);
-      if (!extractedAsin) throw new Error("Kunde inte hitta ASIN. Klistra in en giltig Amazon-länk.");
+      if (!extractedAsin) throw new Error("Kunde inte hitta produkten. Prova att kopiera länken från Amazon.se i webbläsaren istället för appen.\n\nExempel: https://www.amazon.se/dp/B0XXXXXXXXX");
 
       const existing = products.find((p) => p.asin === extractedAsin);
       if (existing) throw new Error("Den här produkten bevakas redan.");
@@ -197,9 +207,13 @@ export default function AddProduct() {
                 </div>
               </div>
 
+              <p className="text-xs text-muted-foreground">
+                💡 Tips: Kopiera länken från Amazon.se i webbläsaren för bästa resultat
+              </p>
+
               {error && (
-                <p className="text-sm text-destructive flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5" />
+                <p className="text-sm text-destructive flex items-start gap-1.5 whitespace-pre-line">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                   {error}
                 </p>
               )}
