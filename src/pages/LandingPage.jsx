@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,10 @@ function FeatureCard({ emoji, title, desc, delay }) {
 }
 
 export default function LandingPage() {
+  React.useEffect(() => {
+    document.title = "Prisfall — Bevaka priser på Amazon.se gratis";
+  }, []);
+
   const SLIDER_STEPS = [1000, 2500, 5000, 10000, 15000, 20000, 30000, 50000, 100000];
   const [sliderIndex, setSliderIndex] = useState(4); // default: 15000
   const sliderValue = SLIDER_STEPS[sliderIndex];

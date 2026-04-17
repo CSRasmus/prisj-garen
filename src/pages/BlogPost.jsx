@@ -19,8 +19,10 @@ export default function BlogPost() {
         const found = posts.find(p => p.slug === slug && p.published);
         if (found) {
           setPost(found);
+          document.title = `${found.title} — Prisfall`;
         } else {
           setNotFound(true);
+          document.title = "Artikel hittades inte — Prisfall";
         }
       } catch (err) {
         setNotFound(true);

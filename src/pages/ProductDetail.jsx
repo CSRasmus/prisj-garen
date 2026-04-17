@@ -46,6 +46,14 @@ export default function ProductDetail() {
     enabled: !!productId,
   });
 
+  useEffect(() => {
+    if (product?.title) {
+      document.title = `${product.title} — Prisfall`;
+    } else {
+      document.title = "Produktdetaljer — Prisfall";
+    }
+  }, [product?.title]);
+
   const { data: priceHistory = [], isLoading: historyLoading } = useQuery({
     queryKey: ["priceHistory", productId, product?.asin],
     queryFn: async () => {

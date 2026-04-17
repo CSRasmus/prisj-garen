@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
+    document.title = "Mina bevakningar — Prisfall";
     base44.auth.me().then(setCurrentUser).catch(() => {});
   }, []);
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,10 @@ export default function Blog() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(1);
+
+  React.useEffect(() => {
+    document.title = "Pristips & Deals — Prisfall";
+  }, []);
 
   const { data: articles = [], isLoading } = useQuery({
     queryKey: ["blogPosts", search, category],

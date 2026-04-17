@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -33,7 +33,10 @@ export default function AddProduct() {
   const queryClient = useQueryClient();
 
   const [currentUser, setCurrentUser] = React.useState(null);
-  React.useEffect(() => { base44.auth.me().then(setCurrentUser).catch(() => {}); }, []);
+  React.useEffect(() => {
+    document.title = "Lägg till produkt — Prisfall";
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
