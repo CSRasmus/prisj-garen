@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const RAINFOREST_API_KEY = Deno.env.get("RAINFOREST_API_KEY");
+const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 
 const ninetyDaysAgo = () => {
   const d = new Date();
@@ -25,12 +25,21 @@ async function saveToGlobalHistory(base44, asin, price, currency, now) {
 }
 
 async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
-  const url = `https://api.rainforestapi.com/request?api_key=${RAINFOREST_API_KEY}&type=product&asin=${product.asin}&amazon_domain=amazon.se&include_price_history=true`;
-  const response = await fetch(url);
-  const data = await response.json();
+  const doFetch = () => fetch("https://api.easyparser.com/realtime", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "api-key": EASYPARSER_API_KEY },
+    body: JSON.stringify({ platform: "AMZ", operation: "DETAIL", domain: ".se", payload: { asin: product.asin } }),
+  });
 
-  const p = data.product;
-  if (!p) throw new Error(`No product data: ${data.message || ''}`);
+  let res = await doFetch();
+  if (!res.ok) {
+    console.warn(`Easyparser ${res.status} for ${product.asin}, retrying...`);
+    await new Promise(r => setTimeout(r, 3000));
+    res = await doFetch();
+  }
+  const data = await res.json();
+  const p = data.data;
+  if (!p) throw new Error(`Easyparser error: ${data.error || data.message || 'No data'}`);
 
   const price = parseFloat(
     p.buybox_winner?.price?.value || p.price?.value || p.rrp?.value
@@ -39,51 +48,14 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
 
   const currency = "SEK";
   const now = new Date().toISOString();
-  const cutoff = ninetyDaysAgo();
 
-  // Save to GlobalPriceHistory (deduplicated per ASIN per day)
+  // Save today's price to GlobalPriceHistory (deduplicated per ASIN per day)
   if (!globalUpdatedAsins.has(product.asin)) {
     const saved = await saveToGlobalHistory(base44, product.asin, price, currency, now);
     if (saved) globalUpdatedAsins.add(product.asin);
   }
 
-  // Import historical data from Rainforest into GlobalPriceHistory (once per ASIN per run)
-  if (!globalUpdatedAsins.has(`hist:${product.asin}`)) {
-    const rawHistory = (p.price_history || []).filter(h => h.date && h.price && new Date(h.date) >= cutoff);
-    if (rawHistory.length > 0) {
-      const existingGlobal = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
-        { asin: product.asin, amazon_domain: "amazon.se" }, "-checked_at", 500
-      );
-      const existingGlobalDates = new Set(existingGlobal.map(h => h.checked_at?.substring(0, 10)));
-      for (const point of rawHistory) {
-        if (!existingGlobalDates.has(point.date?.substring(0, 10))) {
-          await base44.asServiceRole.entities.GlobalPriceHistory.create({
-            asin: product.asin,
-            price: parseFloat(point.price),
-            currency,
-            checked_at: new Date(point.date).toISOString(),
-            amazon_domain: "amazon.se",
-          });
-        }
-      }
-    }
-    globalUpdatedAsins.add(`hist:${product.asin}`);
-  }
-
   // Save to user's PriceHistory
-  const rawHistory = (p.price_history || []).filter(h => h.date && h.price && new Date(h.date) >= cutoff);
-  const existingHistory = await base44.asServiceRole.entities.PriceHistory.filter({ product_id: product.id }, "-checked_at", 500);
-  const existingDates = new Set(existingHistory.map(h => h.checked_at?.substring(0, 10)));
-
-  const newPoints = rawHistory.filter(h => !existingDates.has(h.date?.substring(0, 10)));
-  for (const point of newPoints) {
-    await base44.asServiceRole.entities.PriceHistory.create({
-      product_id: product.id,
-      price: parseFloat(point.price),
-      currency,
-      checked_at: new Date(point.date).toISOString(),
-    });
-  }
   await base44.asServiceRole.entities.PriceHistory.create({ product_id: product.id, price, currency, checked_at: now });
 
   // Compute 90d stats from GlobalPriceHistory for this ASIN
@@ -96,32 +68,20 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
   const avgPrice = Math.round(allPrices.reduce((a, b) => a + b, 0) / allPrices.length);
   const isLowPrice = price <= lowestPrice * 1.05;
 
-  // Calculate percentage drop from average
   const percentFromAvg = avgPrice > 0 ? ((avgPrice - price) / avgPrice) * 100 : 0;
 
+  const imageUrl = p.main_image?.link || p.images?.[0]?.link || product.image_url || null;
   const updateData = { current_price: price, currency, lowest_price_90d: lowestPrice, highest_price_90d: highestPrice, is_low_price: isLowPrice, last_checked: now };
-  if (p.main_image?.link) updateData.image_url = p.main_image.link;
+  if (imageUrl) updateData.image_url = imageUrl;
 
   await base44.asServiceRole.entities.Product.update(product.id, updateData);
 
-  // Determine if this product qualifies for notification
   const hasTargetPrice = product.target_price && product.target_price > 0;
   const meetsTargetPrice = hasTargetPrice && price <= product.target_price;
   const meetsPctThreshold = !hasTargetPrice && percentFromAvg >= 5;
   const qualifies = (meetsTargetPrice || meetsPctThreshold) && product.notify_on_drop && product.created_by;
 
-  return {
-    price,
-    isLowPrice,
-    avgPrice,
-    lowestPrice,
-    highestPrice,
-    percentFromAvg,
-    qualifies,
-    hasTargetPrice,
-    currency,
-    imageUrl: p.main_image?.link || product.image_url || null,
-  };
+  return { price, isLowPrice, avgPrice, lowestPrice, highestPrice, percentFromAvg, qualifies, hasTargetPrice, currency, imageUrl };
 }
 
 // Build HTML for a single product row in the summary email

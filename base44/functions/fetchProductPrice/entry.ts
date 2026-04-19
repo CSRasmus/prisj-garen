@@ -1,6 +1,24 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const RAINFOREST_API_KEY = Deno.env.get("RAINFOREST_API_KEY");
+const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
+
+async function fetchEasyparserProduct(asin) {
+  const doFetch = () => fetch("https://api.easyparser.com/realtime", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "api-key": EASYPARSER_API_KEY },
+    body: JSON.stringify({ platform: "AMZ", operation: "DETAIL", domain: ".se", payload: { asin } }),
+  });
+
+  let res = await doFetch();
+  if (!res.ok) {
+    console.warn(`Easyparser returned ${res.status}, retrying...`);
+    await new Promise(r => setTimeout(r, 3000));
+    res = await doFetch();
+  }
+  const data = await res.json();
+  if (data.error || !data.data) throw new Error(`Easyparser error: ${data.error || data.message || 'No data'}`);
+  return data.data;
+}
 
 const ninetyDaysAgo = () => {
   const d = new Date();
@@ -49,14 +67,9 @@ Deno.serve(async (req) => {
     const { product_id, asin } = await req.json();
     if (!asin) return Response.json({ error: 'ASIN required' }, { status: 400 });
 
-    console.log(`Fetching price + history via Rainforest API for ASIN: ${asin}`);
+    console.log(`Fetching price via Easyparser for ASIN: ${asin}`);
 
-    const url = `https://api.rainforestapi.com/request?api_key=${RAINFOREST_API_KEY}&type=product&asin=${asin}&amazon_domain=amazon.se&include_price_history=true`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    const product = data.product;
-    if (!product) throw new Error(`Product not found: ${data.message || ''}`);
+    const product = await fetchEasyparserProduct(asin);
 
     const price = parseFloat(
       product.buybox_winner?.price?.value ||
@@ -71,36 +84,11 @@ Deno.serve(async (req) => {
 
     if (!product_id) return Response.json({ success: true, price, currency });
 
-    // Build 90-day price history from Rainforest
-    const cutoff = ninetyDaysAgo();
-    const rawHistory = (product.price_history || []).filter(h => {
-      if (!h.date || !h.price) return false;
-      return new Date(h.date) >= cutoff;
-    });
-
-    console.log(`Got ${rawHistory.length} historical price points from Rainforest`);
-
-    // Save historical points to GlobalPriceHistory (deduped)
-    await seedGlobalHistory(base44, asin, rawHistory, currency);
-
-    // Save today's price to GlobalPriceHistory
+    // Easyparser does not provide price_history — seed today only
     await saveToGlobalHistory(base44, asin, price, currency, now);
 
     // Save to user's PriceHistory
-    const existingHistory = await base44.entities.PriceHistory.filter({ product_id }, "-checked_at", 500);
-    const existingDates = new Set(existingHistory.map(h => h.checked_at?.substring(0, 10)));
-
-    const newPoints = rawHistory.filter(h => !existingDates.has(h.date?.substring(0, 10)));
-    for (const point of newPoints) {
-      await base44.entities.PriceHistory.create({
-        product_id,
-        price: parseFloat(point.price),
-        currency,
-        checked_at: new Date(point.date).toISOString(),
-      });
-    }
     await base44.entities.PriceHistory.create({ product_id, price, currency, checked_at: now });
-    console.log(`Inserted ${newPoints.length} new historical price points`);
 
     // Compute 90d stats from all available global data for this ASIN
     const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
@@ -119,7 +107,8 @@ Deno.serve(async (req) => {
       is_low_price: isLowPrice,
       last_checked: now,
     };
-    if (product.main_image?.link) updateData.image_url = product.main_image.link;
+    const imageUrl = product.main_image?.link || product.images?.[0]?.link;
+    if (imageUrl) updateData.image_url = imageUrl;
 
     await base44.entities.Product.update(product_id, updateData);
     console.log(`Saved to DB. isLow=${isLowPrice} low90=${lowestPrice} high90=${highestPrice}`);
