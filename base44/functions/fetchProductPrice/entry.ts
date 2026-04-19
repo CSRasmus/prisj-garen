@@ -40,23 +40,6 @@ async function saveToGlobalHistory(base44, asin, price, currency, now) {
   }
 }
 
-// Bulk-insert historical points into GlobalPriceHistory (deduped by day)
-async function seedGlobalHistory(base44, asin, rawHistory, currency) {
-  const existingGlobal = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
-    { asin, amazon_domain: "amazon.se" }, "-checked_at", 500
-  );
-  const existingGlobalDates = new Set(existingGlobal.map(h => h.checked_at?.substring(0, 10)));
-  const newGlobal = rawHistory.filter(h => !existingGlobalDates.has(h.date?.substring(0, 10)));
-  for (const point of newGlobal) {
-    await base44.asServiceRole.entities.GlobalPriceHistory.create({
-      asin,
-      price: parseFloat(point.price),
-      currency,
-      checked_at: new Date(point.date).toISOString(),
-      amazon_domain: "amazon.se",
-    });
-  }
-}
 
 Deno.serve(async (req) => {
   try {

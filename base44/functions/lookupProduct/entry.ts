@@ -13,13 +13,17 @@ Deno.serve(async (req) => {
 
     if (!EASYPARSER_API_KEY) throw new Error("EASYPARSER_API_KEY saknas i miljövariabler");
 
-    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL" });
-    const res = await fetch(`https://realtime.easyparser.com/v1/request?${params}`);
+    const doFetch = () => {
+      const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL" });
+      return fetch(`https://realtime.easyparser.com/v1/request?${params}`);
+    };
 
+    let res = await doFetch();
     if (!res.ok) {
-      const errText = await res.text();
-      console.error(`Easyparser HTTP ${res.status}:`, errText.substring(0, 300));
-      throw new Error(`Easyparser svarade med ${res.status}`);
+      console.warn(`Easyparser ${res.status} for ${asin}, retrying...`);
+      await new Promise(r => setTimeout(r, 3000));
+      res = await doFetch();
+      if (!res.ok) throw new Error(`Easyparser svarade med ${res.status}`);
     }
 
     const data = await res.json();

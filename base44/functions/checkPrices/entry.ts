@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
+// NOTE: RAINFOREST_API_KEY is no longer used and can be removed from Base44 environment variables.
 
 // Save to GlobalPriceHistory — one entry per ASIN per day
 async function saveToGlobalHistory(base44, asin, price, currency, now) {
@@ -187,7 +188,9 @@ Deno.serve(async (req) => {
     // Map: userEmail -> { qualifiedProducts: [{product, result}], totalWatched: number }
     const userNotifyMap = {};
 
-    for (const product of products) {
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+
       // Track total watched per user
       if (product.created_by) {
         if (!userNotifyMap[product.created_by]) {
@@ -210,7 +213,7 @@ Deno.serve(async (req) => {
       }
 
       // Rate limit: 2s between requests
-      if (products.indexOf(product) < products.length - 1) {
+      if (i < products.length - 1) {
         await new Promise(r => setTimeout(r, 2000));
       }
     }
