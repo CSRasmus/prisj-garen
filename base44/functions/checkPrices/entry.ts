@@ -26,7 +26,7 @@ async function saveToGlobalHistory(base44, asin, price, currency, now) {
 
 async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
   const doFetch = () => {
-    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: "amazon.se", asin: product.asin, output: "json", operation: "DETAIL" });
+    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin: product.asin, output: "json", operation: "DETAIL" });
     return fetch(`https://realtime.easyparser.com/v1/request?${params}`);
   };
 

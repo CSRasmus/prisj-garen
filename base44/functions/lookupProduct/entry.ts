@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
 
     if (!EASYPARSER_API_KEY) throw new Error("EASYPARSER_API_KEY saknas i miljövariabler");
 
-    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: "amazon.se", asin, output: "json", operation: "DETAIL" });
+    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL" });
     const res = await fetch(`https://realtime.easyparser.com/v1/request?${params}`);
 
     if (!res.ok) {

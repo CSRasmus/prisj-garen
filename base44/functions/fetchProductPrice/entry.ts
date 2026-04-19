@@ -4,7 +4,7 @@ const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 
 async function fetchEasyparserProduct(asin) {
   const doFetch = () => {
-    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: "amazon.se", asin, output: "json", operation: "DETAIL" });
+    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL" });
     return fetch(`https://realtime.easyparser.com/v1/request?${params}`);
   };
 
@@ -17,7 +17,10 @@ async function fetchEasyparserProduct(asin) {
   }
   const data = await res.json();
   console.log(`Easyparser request_info for ${asin}:`, JSON.stringify(data.request_info));
-  if (!data.request_info?.success || data.request_info?.status_code === 404 || !data.result?.detail) {
+  if (data.request_info?.status_code === 404 || !data.result?.detail) {
+    throw new Error(`Produkten hittades inte på Amazon.se (ASIN: ${asin})`);
+  }
+  if (!data.request_info?.success) {
     throw new Error(`Easyparser: ${JSON.stringify(data.request_info?.error_details || data.request_info).substring(0, 200)}`);
   }
   return data.result.detail;
