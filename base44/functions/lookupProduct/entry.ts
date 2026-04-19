@@ -11,17 +11,20 @@ Deno.serve(async (req) => {
     const { asin } = await req.json();
     if (!asin) return Response.json({ error: 'ASIN required' }, { status: 400 });
 
-    const doFetch = () => fetch("https://api.easyparser.com/realtime", {
+    if (!EASYPARSER_API_KEY) throw new Error("EASYPARSER_API_KEY saknas i miljövariabler");
+
+    const res = await fetch("https://api.easyparser.com/realtime", {
       method: "POST",
       headers: { "Content-Type": "application/json", "api-key": EASYPARSER_API_KEY },
       body: JSON.stringify({ platform: "AMZ", operation: "DETAIL", domain: ".se", payload: { asin } }),
     });
 
-    let res = await doFetch();
     if (!res.ok) {
-      await new Promise(r => setTimeout(r, 3000));
-      res = await doFetch();
+      const errText = await res.text();
+      console.error(`Easyparser ${res.status}:`, errText.substring(0, 300));
+      throw new Error(`Easyparser svarade med ${res.status}`);
     }
+
     const data = await res.json();
     const product = data.data;
 
