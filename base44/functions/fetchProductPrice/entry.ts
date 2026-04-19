@@ -26,12 +26,6 @@ async function fetchEasyparserProduct(asin) {
   return data.result.detail;
 }
 
-const ninetyDaysAgo = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - 90);
-  return d;
-};
-
 // Save to GlobalPriceHistory — one entry per ASIN per day
 async function saveToGlobalHistory(base44, asin, price, currency, now) {
   const today = now.substring(0, 10);

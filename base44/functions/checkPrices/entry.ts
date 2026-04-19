@@ -2,12 +2,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 
-const ninetyDaysAgo = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - 90);
-  return d;
-};
-
 // Save to GlobalPriceHistory — one entry per ASIN per day
 async function saveToGlobalHistory(base44, asin, price, currency, now) {
   const today = now.substring(0, 10);
