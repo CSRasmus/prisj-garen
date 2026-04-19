@@ -41,7 +41,9 @@ Deno.serve(async (req) => {
     console.log("product.rrp:", JSON.stringify(product.rrp));
 
     const priceRaw = product.buybox_winner?.price?.value ?? product.price?.value ?? null;
-    const price = priceRaw !== null ? parseFloat(String(priceRaw).replace(",", ".")) : null;
+    const price = priceRaw !== null
+      ? parseFloat(String(priceRaw).replace(/\s/g, "").replace(/,(\d{3})/g, "$1").replace(",", "."))
+      : null;
     console.log("priceRaw:", priceRaw, "-> parsed:", price);
 
     return Response.json({

@@ -83,7 +83,10 @@ Deno.serve(async (req) => {
     console.log("product.rrp:", JSON.stringify(product.rrp));
 
     const priceRaw = product.buybox_winner?.price?.value ?? product.price?.value ?? product.rrp?.value ?? null;
-    const price = priceRaw !== null ? parseFloat(String(priceRaw).replace(",", ".")) : NaN;
+    // Handle both "2,171.49" (thousands separator) and "2 171,49" (European style)
+    const price = priceRaw !== null
+      ? parseFloat(String(priceRaw).replace(/\s/g, "").replace(/,(\d{3})/g, "$1").replace(",", "."))
+      : NaN;
     console.log("priceRaw:", priceRaw, "-> parsed:", price);
 
     if (!price || price < 1 || price > 100000) throw new Error(`Invalid price: ${priceRaw} -> ${price}`);

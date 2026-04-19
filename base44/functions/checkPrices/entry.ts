@@ -44,9 +44,10 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
   }
   const p = data.result.detail;
 
-  const price = parseFloat(
-    p.buybox_winner?.price?.value || p.price?.value || p.rrp?.value
-  );
+  const priceRaw = p.buybox_winner?.price?.value ?? p.price?.value ?? p.rrp?.value ?? null;
+  const price = priceRaw !== null
+    ? parseFloat(String(priceRaw).replace(/\s/g, "").replace(/,(\d{3})/g, "$1").replace(",", "."))
+    : NaN;
   if (!price || price < 1 || price > 100000) throw new Error(`Invalid price: ${price}`);
 
   const currency = "SEK";
