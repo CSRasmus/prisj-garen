@@ -4,7 +4,7 @@ const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 
 async function fetchEasyparserProduct(asin) {
   const doFetch = () => {
-    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL" });
+    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: "amazon.se", asin, output: "json", operation: "DETAIL" });
     return fetch(`https://realtime.easyparser.com/v1/request?${params}`);
   };
 
@@ -74,12 +74,16 @@ Deno.serve(async (req) => {
 
     const product = await fetchEasyparserProduct(asin);
 
-    const price = parseFloat(
-      product.buybox_winner?.price?.value ||
-      product.price?.value ||
-      product.rrp?.value
-    );
-    if (!price || price < 1 || price > 100000) throw new Error(`Invalid price: ${price}`);
+    // Debug: log exact price fields
+    console.log("buybox_winner:", JSON.stringify(product.buybox_winner));
+    console.log("product.price:", JSON.stringify(product.price));
+    console.log("product.rrp:", JSON.stringify(product.rrp));
+
+    const priceRaw = product.buybox_winner?.price?.value ?? product.price?.value ?? product.rrp?.value ?? null;
+    const price = priceRaw !== null ? parseFloat(String(priceRaw).replace(",", ".")) : NaN;
+    console.log("priceRaw:", priceRaw, "-> parsed:", price);
+
+    if (!price || price < 1 || price > 100000) throw new Error(`Invalid price: ${priceRaw} -> ${price}`);
 
     const currency = "SEK";
     const now = new Date().toISOString();

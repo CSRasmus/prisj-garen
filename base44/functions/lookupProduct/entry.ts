@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
 
     if (!EASYPARSER_API_KEY) throw new Error("EASYPARSER_API_KEY saknas i miljövariabler");
 
-    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL" });
+    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: "amazon.se", asin, output: "json", operation: "DETAIL" });
     const res = await fetch(`https://realtime.easyparser.com/v1/request?${params}`);
 
     if (!res.ok) {
@@ -35,16 +35,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Kunde inte hitta produkten på Amazon.se, kontrollera länken och försök igen" }, { status: 404 });
     }
 
-    const price = product.buybox_winner?.price?.value || product.price?.value || null;
+    // Debug: log exact price fields so we can see what Easyparser returns
+    console.log("buybox_winner:", JSON.stringify(product.buybox_winner));
+    console.log("product.price:", JSON.stringify(product.price));
+    console.log("product.rrp:", JSON.stringify(product.rrp));
+
+    const priceRaw = product.buybox_winner?.price?.value ?? product.price?.value ?? null;
+    const price = priceRaw !== null ? parseFloat(String(priceRaw).replace(",", ".")) : null;
+    console.log("priceRaw:", priceRaw, "-> parsed:", price);
 
     return Response.json({
       title: product.title,
       image_url: product.main_image?.link || product.images?.[0]?.link || null,
-      current_price: price ? parseFloat(price) : null,
+      current_price: price,
       currency: "SEK",
     });
   } catch (error) {
-    console.error("lookupProduct error:", error.message);
+    console.error("lookupProduct error:", error.name, error.message, error.cause?.message || "");
     return Response.json({ error: "Kunde inte hitta produkten på Amazon.se, kontrollera länken och försök igen" }, { status: 500 });
   }
 });
