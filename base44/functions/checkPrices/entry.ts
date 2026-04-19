@@ -25,21 +25,24 @@ async function saveToGlobalHistory(base44, asin, price, currency, now) {
 }
 
 async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
-  const doFetch = () => fetch("https://api.easyparser.com/realtime", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "api-key": EASYPARSER_API_KEY },
-    body: JSON.stringify({ platform: "AMZ", operation: "DETAIL", domain: ".se", payload: { asin: product.asin } }),
-  });
+  const doFetch = () => {
+    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin: product.asin, output: "json", operation: "DETAIL" });
+    return fetch(`https://realtime.easyparser.com/v1/request?${params}`);
+  };
 
   let res = await doFetch();
   if (!res.ok) {
     console.warn(`Easyparser ${res.status} for ${product.asin}, retrying...`);
     await new Promise(r => setTimeout(r, 3000));
     res = await doFetch();
+    if (!res.ok) throw new Error(`Easyparser HTTP ${res.status}`);
   }
   const data = await res.json();
-  const p = data.data;
-  if (!p) throw new Error(`Easyparser error: ${data.error || data.message || 'No data'}`);
+  console.log(`Easyparser for ${product.asin}: success=${data.request_info?.success} status=${data.request_info?.status_code}`);
+  if (!data.request_info?.success || data.request_info?.status_code === 404 || !data.result?.detail) {
+    throw new Error(`Easyparser: ${JSON.stringify(data.request_info?.error_details || data.request_info).substring(0, 200)}`);
+  }
+  const p = data.result.detail;
 
   const price = parseFloat(
     p.buybox_winner?.price?.value || p.price?.value || p.rrp?.value

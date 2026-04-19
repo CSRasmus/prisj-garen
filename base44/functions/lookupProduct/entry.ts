@@ -13,23 +13,25 @@ Deno.serve(async (req) => {
 
     if (!EASYPARSER_API_KEY) throw new Error("EASYPARSER_API_KEY saknas i miljövariabler");
 
-    const res = await fetch("https://api.easyparser.com/realtime", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "api-key": EASYPARSER_API_KEY },
-      body: JSON.stringify({ platform: "AMZ", operation: "DETAIL", domain: ".se", payload: { asin } }),
-    });
+    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL" });
+    const res = await fetch(`https://realtime.easyparser.com/v1/request?${params}`);
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error(`Easyparser ${res.status}:`, errText.substring(0, 300));
+      console.error(`Easyparser HTTP ${res.status}:`, errText.substring(0, 300));
       throw new Error(`Easyparser svarade med ${res.status}`);
     }
 
     const data = await res.json();
-    const product = data.data;
+    console.log("Easyparser request_info:", JSON.stringify(data.request_info));
 
+    if (!data.request_info?.success || data.request_info?.status_code === 404) {
+      return Response.json({ error: "Kunde inte hitta produkten på Amazon.se, kontrollera länken och försök igen" }, { status: 404 });
+    }
+
+    const product = data.result?.detail;
     if (!product) {
-      console.error("Easyparser no product:", JSON.stringify(data).substring(0, 300));
+      console.error("Easyparser no detail in result:", JSON.stringify(Object.keys(data.result || {})));
       return Response.json({ error: "Kunde inte hitta produkten på Amazon.se, kontrollera länken och försök igen" }, { status: 404 });
     }
 
