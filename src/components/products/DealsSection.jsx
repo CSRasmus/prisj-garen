@@ -59,14 +59,17 @@ export default function DealsSection({ products }) {
                 </div>
               </div>
 
+              <div className="text-xs text-muted-foreground">
+                {formatPrice(drop, product.currency)} under normalpris
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  -{dropPct}% ({formatPrice(drop, product.currency)})
+                  -{dropPct}%
                 </span>
                 <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer">
-                  <Button className="h-11 text-sm gap-1.5 px-4">
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Köp
+                  <Button className="h-11 text-sm gap-1.5 px-4 font-bold">
+                    Köp nu →
                   </Button>
                 </a>
               </div>
