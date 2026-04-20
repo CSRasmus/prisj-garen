@@ -1,41 +1,61 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Flame, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice, buildAmazonUrl } from "@/lib/affiliateUtils";
-import { base44 } from "@/api/base44Client";
 
 const MIN_DATA_POINTS = 14;
 
-export default function DealsSection({ products }) {
-  const [counts, setCounts] = useState({});
+function calcMedian(prices) {
+  const valid = prices.filter(p => p != null && !isNaN(p) && p > 0);
+  if (!valid.length) return null;
+  const sorted = [...valid].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
 
-  // Fetch PriceHistory counts for all is_low_price products
-  useEffect(() => {
-    const lowProducts = products.filter(p => p.is_low_price && p.current_price && p.highest_price_90d);
-    if (!lowProducts.length) return;
-    Promise.all(
-      lowProducts.map(p =>
-        base44.entities.PriceHistory.filter({ product_id: p.id }, "-checked_at", 60)
-          .then(h => ({ id: p.id, count: h.length }))
-          .catch(() => ({ id: p.id, count: 0 }))
-      )
-    ).then(results => {
-      const map = {};
-      results.forEach(r => { map[r.id] = r.count; });
-      setCounts(map);
-    });
-  }, [products]);
+// Bug 1 fix: historyByProduct passed as prop from Dashboard — no internal fetch, no useEffect, no infinity loop
+// Bug 4 fix: historyByProduct=null means still loading → show skeleton
+// Bug 5 fix: use median as "normalpris" instead of highest_price_90d
+export default function DealsSection({ products, historyByProduct }) {
+  const isLoading = historyByProduct == null;
 
-  // Only show if there are any is_low_price products at all
+  // Only show section if there are any is_low_price products
   const hasLowPrice = products.some(p => p.is_low_price);
   if (!hasLowPrice) return null;
 
-  // Verified deals: 14+ data points AND is_low_price
+  // Bug 4 fix: show skeleton while history data is loading
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Flame className="w-4 h-4 text-orange-500" />
+          <h2 className="font-bold text-sm uppercase tracking-wide text-muted-foreground">Dagens deals</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[1, 2].map(i => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+        </div>
+      </div>
+    );
+  }
+
+  // Bug 1 fix: pure computation from props, no useEffect needed
+  // Bug 5 fix: use median as normalpris
   const deals = products
-    .filter(p => p.is_low_price && p.highest_price_90d && p.current_price && (counts[p.id] ?? 0) >= MIN_DATA_POINTS)
-    .sort((a, b) => (b.highest_price_90d - b.current_price) - (a.highest_price_90d - a.current_price))
+    .filter(p => {
+      if (!p.is_low_price || !p.highest_price_90d || !p.current_price) return false;
+      const history = historyByProduct[p.id] || [];
+      return history.length >= MIN_DATA_POINTS;
+    })
+    .map(p => {
+      const history = historyByProduct[p.id] || [];
+      const median = calcMedian(history.map(h => h.price)) ??
+        (p.lowest_price_90d && p.highest_price_90d ? (p.lowest_price_90d + p.highest_price_90d) / 2 : p.highest_price_90d);
+      return { ...p, _median: median };
+    })
+    .sort((a, b) => (b._median - b.current_price) - (a._median - a.current_price))
     .slice(0, 3);
 
   return (
@@ -49,7 +69,9 @@ export default function DealsSection({ products }) {
         <Flame className="w-4 h-4 text-orange-500" />
         <h2 className="font-bold text-sm uppercase tracking-wide text-muted-foreground">Dagens deals</h2>
         {deals.length > 0 && (
-          <span className="ml-auto text-xs text-muted-foreground">{deals.length} verifierad{deals.length !== 1 ? "e" : ""} deal{deals.length !== 1 ? "s" : ""}</span>
+          <span className="ml-auto text-xs text-muted-foreground">
+            {deals.length} verifierad{deals.length !== 1 ? "e" : ""} deal{deals.length !== 1 ? "s" : ""}
+          </span>
         )}
       </div>
 
@@ -60,8 +82,10 @@ export default function DealsSection({ products }) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {deals.map((product, i) => {
-            const drop = product.highest_price_90d - product.current_price;
-            const dropPct = Math.round((drop / product.highest_price_90d) * 100);
+            // Bug 5 fix: use median as normalpris
+            const normalpris = product._median;
+            const drop = normalpris - product.current_price;
+            const dropPct = normalpris > 0 ? Math.round((drop / normalpris) * 100) : 0;
 
             return (
               <motion.div
@@ -85,13 +109,14 @@ export default function DealsSection({ products }) {
                     </Link>
                     <div className="flex items-baseline gap-1.5 mt-1">
                       <span className="text-base font-extrabold text-primary">{formatPrice(product.current_price, product.currency)}</span>
-                      <span className="text-xs line-through text-muted-foreground">{formatPrice(product.highest_price_90d, product.currency)}</span>
+                      <span className="text-xs line-through text-muted-foreground">{formatPrice(normalpris, product.currency)}</span>
                     </div>
                   </div>
                 </div>
 
+                {/* Bug 5 fix: label changed from "normalpris" to "genomsnittspris" */}
                 <div className="text-xs text-muted-foreground">
-                  {formatPrice(drop, product.currency)} under normalpris
+                  {formatPrice(drop, product.currency)} under genomsnittet
                 </div>
 
                 <div className="flex items-center justify-between">

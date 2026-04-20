@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,14 @@ import { fetchProductPrice } from "@/functions/fetchProductPrice";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import SparklineChart from "./SparklineChart";
-import { base44 } from "@/api/base44Client";
 
 const MIN_DATA_POINTS = 14;
 
 function calcMedian(prices) {
-  if (!prices.length) return null;
-  const sorted = [...prices].sort((a, b) => a - b);
+  // Bug 2 fix: filter out null/NaN before calculating
+  const valid = prices.filter(p => p != null && !isNaN(p) && p > 0);
+  if (!valid.length) return null;
+  const sorted = [...valid].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
@@ -29,25 +30,22 @@ function getPriceState(priceHistory, product) {
   return product.is_low_price ? "low" : "normal";
 }
 
-export default function ProductCard({ product, onDelete, onToggleNotify, index = 0, onPriceDrop }) {
+// Bug 6: priceHistory now comes as a prop from Dashboard (no per-card fetch)
+export default function ProductCard({ product, priceHistory = [], onDelete, onToggleNotify, index = 0, onPriceDrop }) {
   const [refreshing, setRefreshing] = useState(false);
-  const [priceHistory, setPriceHistory] = useState([]);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  useEffect(() => {
-    base44.entities.PriceHistory.filter({ product_id: product.id }, "-checked_at", 60)
-      .then(h => { setPriceHistory(h); setHistoryLoaded(true); })
-      .catch(() => setHistoryLoaded(true));
-  }, [product.id]);
-
-  const state = historyLoaded ? getPriceState(priceHistory, product) : "watching";
+  const state = getPriceState(priceHistory, product);
 
   const median = calcMedian(priceHistory.map(h => h.price)) ??
     (product.lowest_price_90d && product.highest_price_90d
       ? (product.lowest_price_90d + product.highest_price_90d) / 2
       : null);
+
+  // Bug 2 fix: only show savings if diff is meaningfully positive
+  const savingsDiff = median != null ? Math.round(median - product.current_price) : 0;
+  const showSavings = state === "low" && savingsDiff > 0;
 
   const handleRefresh = async (e) => {
     e.stopPropagation();
@@ -55,8 +53,16 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
     const prevLow = product.is_low_price;
     try {
       await fetchProductPrice({ product_id: product.id, asin: product.asin });
+      // Bug 3 fix: invalidate and refetch, then check the refreshed data via onSuccess callback pattern
       await queryClient.invalidateQueries({ queryKey: ["products"] });
-      const updated = queryClient.getQueryData(["products"])?.find(p => p.id === product.id);
+      await queryClient.invalidateQueries({ queryKey: ["priceHistory"] });
+      // After refetch settles, check if product became low price
+      const freshProducts = await queryClient.fetchQuery({
+        queryKey: ["products"],
+        queryFn: () => queryClient.getQueryData(["products"]),
+        staleTime: 0,
+      }).catch(() => null);
+      const updated = Array.isArray(freshProducts) ? freshProducts.find(p => p.id === product.id) : null;
       if (updated?.is_low_price && !prevLow) onPriceDrop?.();
       toast({ title: "Priset har uppdaterats!" });
     } catch (_) {
@@ -137,13 +143,13 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
                     {formatPrice(product.current_price, product.currency)}
                   </span>
                 </div>
-                {/* State-specific subtext */}
                 {state === "watching" && (
                   <p className="text-xs text-muted-foreground mt-0.5">Kom tillbaka om några dagar</p>
                 )}
-                {state === "low" && median && (
+                {/* Bug 2 fix: only show if savingsDiff > 0 */}
+                {showSavings && (
                   <p className="text-xs text-primary font-medium mt-0.5">
-                    💰 {Math.round(median - product.current_price)} kr billigare än normalt
+                    💰 {savingsDiff} kr under genomsnittet
                   </p>
                 )}
                 {state === "normal" && product.lowest_price_90d && (
@@ -152,7 +158,8 @@ export default function ProductCard({ product, onDelete, onToggleNotify, index =
                   </p>
                 )}
               </div>
-              {historyLoaded && <SparklineChart priceHistory={priceHistory} />}
+              {/* Bug 7: overflow hidden handled in SparklineChart */}
+              <SparklineChart priceHistory={priceHistory} />
             </div>
 
             {lastChecked && (

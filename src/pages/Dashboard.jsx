@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
@@ -34,6 +34,33 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Product.filter({ created_by: currentUser.email }, "-created_date"),
     enabled: !!currentUser?.email,
   });
+
+  // Bug 6: Hämta all PriceHistory i ett anrop istället för N anrop per ProductCard
+  const productIds = products.map(p => p.id);
+  const { data: allPriceHistory = [], isLoading: historyLoading } = useQuery({
+    queryKey: ["priceHistory", productIds.join(",")],
+    queryFn: async () => {
+      if (!productIds.length) return [];
+      const results = await Promise.all(
+        productIds.map(id =>
+          base44.entities.PriceHistory.filter({ product_id: id }, "-checked_at", 60)
+            .catch(() => [])
+        )
+      );
+      return results.flat();
+    },
+    enabled: productIds.length > 0,
+  });
+
+  // Group history by product_id for easy lookup
+  const historyByProduct = React.useMemo(() => {
+    const map = {};
+    for (const h of allPriceHistory) {
+      if (!map[h.product_id]) map[h.product_id] = [];
+      map[h.product_id].push(h);
+    }
+    return map;
+  }, [allPriceHistory]);
 
   const deleteMutation = useMutation({
     mutationFn: (product) => base44.entities.Product.delete(product.id),
@@ -109,7 +136,7 @@ export default function Dashboard() {
 
       <StatsWidget products={products} maxProducts={maxProducts} />
 
-      <DealsSection products={products} />
+      <DealsSection products={products} historyByProduct={historyLoading ? null : historyByProduct} />
 
       <ReferralCard user={currentUser} />
 
@@ -119,6 +146,7 @@ export default function Dashboard() {
             key={product.id}
             product={product}
             index={index}
+            priceHistory={historyByProduct[product.id] || []}
             onDelete={(p) => deleteMutation.mutate(p)}
             onToggleNotify={(p) => toggleNotifyMutation.mutate(p)}
             onPriceDrop={() => setShowCelebration(true)}

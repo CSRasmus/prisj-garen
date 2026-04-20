@@ -10,9 +10,14 @@ export default function SparklineChart({ priceHistory, width = 80, height = 30 }
   const max = Math.max(...prices);
   const range = max - min || 1;
 
+  // Bug 7 fix: add 2px padding in viewBox so stroke edges aren't clipped
+  const pad = 2;
+  const innerW = width - pad * 2;
+  const innerH = height - pad * 2;
+
   const points = prices.map((p, i) => {
-    const x = (i / (prices.length - 1)) * width;
-    const y = height - ((p - min) / range) * height;
+    const x = pad + (i / (prices.length - 1)) * innerW;
+    const y = pad + innerH - ((p - min) / range) * innerH;
     return `${x},${y}`;
   }).join(" ");
 
@@ -20,7 +25,8 @@ export default function SparklineChart({ priceHistory, width = 80, height = 30 }
   const color = trend === "down" ? "#16a34a" : trend === "up" ? "#dc2626" : "#9ca3af";
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+    // Bug 7 fix: overflow-hidden instead of overflow-visible
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-hidden">
       <polyline
         points={points}
         fill="none"
