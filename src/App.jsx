@@ -17,6 +17,7 @@ import Blog from '@/pages/Blog';
 import BlogPost from '@/pages/BlogPost';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
+import Admin from '@/pages/Admin';
 import { handleReferral } from '@/functions/handleReferral';
 
 // Capture referral code from URL and store in localStorage
@@ -62,6 +63,9 @@ const AuthenticatedApp = () => {
       {/* Public legal routes */}
       <Route path="/integritetspolicy" element={<Privacy />} />
       <Route path="/villkor" element={<Terms />} />
+
+      {/* Admin */}
+      <Route path="/admin" element={<Admin />} />
 
       {/* Authenticated app routes */}
       <Route element={<AppLayout />}>
