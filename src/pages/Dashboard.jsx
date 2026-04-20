@@ -10,8 +10,7 @@ import PriceCelebration from "@/components/products/PriceCelebration";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Plus, Tag, Mail } from "lucide-react";
-import { sendVerificationEmail } from "@/functions/sendVerificationEmail";
+import { Plus, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReferralCard from "@/components/referral/ReferralCard";
 import { getMaxProducts } from "@/lib/shareUtils";
@@ -24,8 +23,6 @@ export default function Dashboard() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [sendingVerification, setSendingVerification] = useState(false);
-  const [verificationSent, setVerificationSent] = useState(false);
 
   useEffect(() => {
     document.title = "Mina bevakningar — Prisfall";
@@ -108,44 +105,9 @@ export default function Dashboard() {
   const lowPriceCount = products.filter((p) => p.is_low_price).length;
   const maxProducts = getMaxProducts(currentUser?.referred_count);
 
-  const handleSendVerification = async () => {
-    setSendingVerification(true);
-    try {
-      await sendVerificationEmail({});
-      setVerificationSent(true);
-    } catch {
-      // ignore
-    }
-    setSendingVerification(false);
-  };
-
   return (
     <div className="space-y-6">
       <PriceCelebration show={showCelebration} onDone={() => setShowCelebration(false)} />
-
-      {/* Email verification banner */}
-      {currentUser && currentUser.email_verified === false && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <Mail className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
-          <div className="flex-1 text-sm">
-            <span className="font-semibold text-amber-800">⚠️ Bekräfta din e-post för att få prisnotiser</span>
-            <p className="text-amber-700 mt-0.5">Kolla din inkorg efter ett bekräftelsemejl från Prisfall.</p>
-          </div>
-          {verificationSent ? (
-            <span className="text-xs text-green-700 font-medium shrink-0">✅ Mail skickat!</span>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleSendVerification}
-              disabled={sendingVerification}
-              className="shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100"
-            >
-              {sendingVerification ? "Skickar…" : "Skicka nytt verifieringsmail"}
-            </Button>
-          )}
-        </div>
-      )}
 
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>

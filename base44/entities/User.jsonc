@@ -27,20 +27,11 @@
     },
     "referred_by": {
       "type": "string"
-    },
-    "email_verified": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether the user has verified their email address"
-    },
-    "verification_token": {
-      "type": "string",
-      "description": "One-time token for email verification"
-    },
-    "verification_sent_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When the verification email was last sent"
     }
-  }
+  },
+  "required": [
+    "last_notified",
+    "referral_code",
+    "referred_by"
+  ]
 }

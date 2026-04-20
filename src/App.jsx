@@ -18,7 +18,6 @@ import BlogPost from '@/pages/BlogPost';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
 import Admin from '@/pages/Admin';
-import VerifyEmail from '@/pages/VerifyEmail';
 import { handleReferral } from '@/functions/handleReferral';
 
 // Capture referral code from URL and store in localStorage
@@ -67,9 +66,6 @@ const AuthenticatedApp = () => {
 
       {/* Admin */}
       <Route path="/admin" element={<Admin />} />
-
-      {/* Email verification */}
-      <Route path="/verify" element={<VerifyEmail />} />
 
       {/* Authenticated app routes */}
       <Route element={<AppLayout />}>

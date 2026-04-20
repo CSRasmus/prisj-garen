@@ -235,11 +235,6 @@ Deno.serve(async (req) => {
       // Check user-level 24h cooldown
       const user = userMap[userEmail];
 
-      // Only send to verified users
-      if (!user?.email_verified) {
-        console.log(`Skipping price notification for ${userEmail} — email not verified`);
-        continue;
-      }
       const lastNotified = user?.last_notified ? new Date(user.last_notified) : null;
       if (lastNotified && lastNotified > twentyFourHoursAgo) {
         console.log(`Skipping email to ${userEmail} — already notified within 24h`);
