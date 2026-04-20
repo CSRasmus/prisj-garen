@@ -434,13 +434,15 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="max-w-5xl mx-auto px-4 text-center text-xs text-muted-foreground space-y-3">
-          <div className="flex justify-center gap-6">
+          <div className="flex justify-center gap-6 flex-wrap">
             <a href="/blogg" className="hover:text-foreground transition-colors">Blogg</a>
             <a href="/" className="hover:text-foreground transition-colors">Start</a>
+            <a href="/integritetspolicy" className="hover:text-foreground transition-colors">Integritetspolicy</a>
+            <a href="/villkor" className="hover:text-foreground transition-colors">Villkor</a>
           </div>
           <div className="space-y-1">
-            <p>📉 Prisfall — Bevaka priser på Amazon.se</p>
-            <p>Vi använder affiliate-länkar. När du köper via oss får vi en liten provision — utan extra kostnad för dig.</p>
+            <p>© 2026 Prisfall.se — Vi använder affiliate-länkar från Amazon Associates</p>
+            <p className="text-muted-foreground/70">När du köper via oss får vi en liten provision — utan extra kostnad för dig.</p>
           </div>
         </div>
       </footer>

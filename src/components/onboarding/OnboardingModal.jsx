@@ -276,6 +276,15 @@ export default function OnboardingModal({ onClose }) {
             {current.cta}
           </Button>
 
+          {step === 0 && (
+            <p className="text-center text-xs text-muted-foreground">
+              Genom att registrera dig godkänner du våra{" "}
+              <a href="/villkor" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Villkor</a>
+              {" "}och{" "}
+              <a href="/integritetspolicy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Integritetspolicy</a>
+            </p>
+          )}
+
           {step === 3 && (
             <button
               onClick={dismiss}
