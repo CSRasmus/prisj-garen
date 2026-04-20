@@ -8,6 +8,7 @@ export default function VerifyEmail() {
   const [errorMessage, setErrorMessage] = useState("");
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -35,6 +36,17 @@ export default function VerifyEmail() {
         setStatus(msg.includes("gått ut") ? "expired" : "error");
       });
   }, []);
+
+  // Start countdown and redirect after success
+  useEffect(() => {
+    if (status !== "success") return;
+    if (countdown <= 0) {
+      window.location.href = "/dashboard";
+      return;
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [status, countdown]);
 
   const handleResend = async () => {
     setResending(true);
@@ -64,7 +76,8 @@ export default function VerifyEmail() {
           <>
             <div className="text-5xl">✅</div>
             <h1 className="text-2xl font-bold text-slate-900">E-post verifierad!</h1>
-            <p className="text-slate-600">Välkommen till Prisfall! Du får nu prisnotiser när dina bevakade produkter sjunker i pris.</p>
+            <p className="text-slate-600">Välkomstmail har skickats till din inkorg.</p>
+            <p className="text-slate-400 text-sm">Omdirigerar till appen om {countdown} sekunder…</p>
             <Link
               to="/dashboard"
               className="inline-block bg-primary text-white font-semibold py-3 px-8 rounded-xl hover:bg-primary/90 transition-colors"
