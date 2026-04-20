@@ -120,11 +120,24 @@ export default function LandingPage() {
     return "en ny iPhone eller laptop";
   };
 
+  // Check for Facebook OAuth error in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const oauthError = urlParams.get('error') || urlParams.get('error_description') || '';
+  const showFacebookError = oauthError.toLowerCase().includes('email');
+
   const handleLogin = () => base44.auth.redirectToLogin("/dashboard");
   const handleSignup = () => base44.auth.redirectToLogin("/dashboard");
 
   return (
     <div className="min-h-screen bg-background font-inter">
+      {/* Facebook OAuth error banner */}
+      {showFacebookError && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-center text-sm text-amber-800">
+          <span className="font-semibold">Inloggning med Facebook misslyckades.</span>{" "}
+          Prova att logga in med <button onClick={handleLogin} className="underline font-semibold">Google eller e-post</button> istället.
+        </div>
+      )}
+
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -167,6 +180,9 @@ export default function LandingPage() {
                 </Button>
               </a>
             </div>
+            <p className="text-xs text-muted-foreground">
+              ✅ Vi rekommenderar <span className="font-semibold text-foreground">Google</span> för snabbast inloggning
+            </p>
           </motion.div>
           <div className="flex justify-center">
             <PhoneMockup />
