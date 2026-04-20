@@ -1,81 +1,77 @@
-const CACHE_NAME = 'prisjagaren-v1';
+const CACHE_NAME = 'prisfall-v2';
 const OFFLINE_URL = '/offline.html';
 
-const PRECACHE_URLS = [
-  '/',
-  '/offline.html',
-];
-
-// Install: cache offline page
-self.addEventListener('install', (event) => {
+// Install: cache core assets
+self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
+    caches.open(CACHE_NAME).then(cache =>
+      cache.addAll([OFFLINE_URL, '/', '/manifest.json'])
+    )
   );
   self.skipWaiting();
 });
 
 // Activate: clean up old caches
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-// Fetch: network-first, fallback to offline page for navigation
-self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() =>
-        caches.match(OFFLINE_URL)
-      )
-    );
-    return;
-  }
-  // For other requests: network first, cache as fallback
+// Fetch: network-first with cache fallback
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
   event.respondWith(
     fetch(event.request)
-      .then((response) => {
-        if (response && response.status === 200 && response.type === 'basic') {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        if (event.request.mode === 'navigate') {
+          return caches.match(OFFLINE_URL);
+        }
+      })
   );
 });
 
 // Push notifications
-self.addEventListener('push', (event) => {
-  let data = { title: 'PrisJägaren', body: 'Priset har sjunkit!', url: '/' };
-  if (event.data) {
-    try { data = event.data.json(); } catch {}
+self.addEventListener('push', event => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (_) {
+    payload = { title: 'Prisfall', body: event.data?.text() || 'Ny prisuppdatering!' };
   }
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      data: { url: data.url },
-      vibrate: [200, 100, 200],
-    })
-  );
+
+  const title = payload.title || 'Prisfall 🔥';
+  const options = {
+    body: payload.body || 'En produkt du bevakar har fått ett lägre pris!',
+    icon: '/icons/icon.svg',
+    badge: '/icons/icon.svg',
+    vibrate: [200, 100, 200],
+    requireInteraction: false,
+    tag: 'prisfall-' + Date.now(),
+    data: { url: payload.url || '/dashboard' },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Notification click: open app at product URL
-self.addEventListener('notificationclick', (event) => {
+// Notification click: close + open URL
+self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      const url = event.notification.data?.url || '/dashboard';
       for (const client of windowClients) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.navigate(url);
-          return client.focus();
-        }
+        if (client.url.includes(url) && 'focus' in client) return client.focus();
       }
       if (clients.openWindow) return clients.openWindow(url);
     })

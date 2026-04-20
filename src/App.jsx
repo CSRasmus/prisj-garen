@@ -85,7 +85,7 @@ function App() {
         <Router>
           <AuthenticatedApp />
         </Router>
-        <Toaster />
+        <Toaster duration={4000} closeButton />
         <InstallPrompt />
       </QueryClientProvider>
     </AuthProvider>
