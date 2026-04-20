@@ -4,37 +4,43 @@
   "properties": {
     "role": {
       "type": "string",
-      "description": "The role of the user in the app",
       "enum": [
         "admin",
         "user"
-      ]
-    },
-    "referral_code": {
-      "type": "string",
-      "description": "Unique referral code for this user"
-    },
-    "referred_by": {
-      "type": "string",
-      "description": "Referral code of the user who referred this user"
-    },
-    "referred_count": {
-      "type": "number",
-      "default": 0,
-      "description": "Number of users referred by this user"
+      ],
+      "default": "user"
     },
     "welcome_email_sent": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether the welcome email has been sent to this user"
+      "default": false
     },
     "last_notified": {
       "type": "string",
+      "format": "date-time"
+    },
+    "referred_count": {
+      "type": "number",
+      "default": 0
+    },
+    "referral_code": {
+      "type": "string"
+    },
+    "referred_by": {
+      "type": "string"
+    },
+    "email_verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the user has verified their email address"
+    },
+    "verification_token": {
+      "type": "string",
+      "description": "One-time token for email verification"
+    },
+    "verification_sent_at": {
+      "type": "string",
       "format": "date-time",
-      "description": "Last time a price drop notification email was sent to this user"
+      "description": "When the verification email was last sent"
     }
-  },
-  "required": [
-    "role"
-  ]
+  }
 }

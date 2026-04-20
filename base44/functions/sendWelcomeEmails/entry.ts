@@ -17,8 +17,6 @@ function buildWelcomeEmailHtml(userName) {
     <tr>
       <td align="center">
         <table width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
-
-          <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#16a34a,#22c55e);padding:36px 32px;text-align:center;">
               <div style="font-size:40px;margin-bottom:8px;">🏷️</div>
@@ -26,18 +24,14 @@ function buildWelcomeEmailHtml(userName) {
               <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:14px;">Prisbevakning för Amazon.se</p>
             </td>
           </tr>
-
-          <!-- Welcome -->
           <tr>
             <td style="padding:32px 32px 24px;">
               <h2 style="color:#111827;font-size:22px;font-weight:700;margin:0 0 12px;">Hej ${firstName}! Välkommen till Prisfall 🎉</h2>
               <p style="color:#4b5563;font-size:15px;line-height:1.6;margin:0;">
-                  Du är nu en av de smarta shopparna som aldrig behöver betala för mycket på Amazon igen. Prisfall håller koll på priserna åt dig — helt automatiskt och helt gratis.
-                </p>
+                Du är nu en av de smarta shopparna som aldrig behöver betala för mycket på Amazon igen. Prisfall håller koll på priserna åt dig — helt automatiskt och helt gratis.
+              </p>
             </td>
           </tr>
-
-          <!-- 3 steps -->
           <tr>
             <td style="padding:0 32px 28px;">
               <h3 style="color:#111827;font-size:16px;font-weight:700;margin:0 0 16px;">Kom igång på 3 enkla steg:</h3>
@@ -68,8 +62,6 @@ function buildWelcomeEmailHtml(userName) {
               </div>
             </td>
           </tr>
-
-          <!-- Tips section -->
           <tr>
             <td style="padding:0 32px 32px;">
               <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px 24px;">
@@ -78,7 +70,7 @@ function buildWelcomeEmailHtml(userName) {
                   <tr>
                     <td style="padding:8px 0;border-bottom:1px solid #dcfce7;">
                       <p style="margin:0;font-size:13px;color:#374151;">
-                        💳 <strong>Norwegian-kortet</strong> ger dig extra cashback på alla köp — perfekt kombination med Prisfall.
+                        💳 <strong>Norwegian-kortet</strong> ger dig extra cashback på alla köp.
                         <a href="https://www.norwegian.com/se/frequent-flyer/norwegian-mastercard/" style="color:#16a34a;font-weight:600;margin-left:4px;">Läs mer →</a>
                       </p>
                     </td>
@@ -86,7 +78,7 @@ function buildWelcomeEmailHtml(userName) {
                   <tr>
                     <td style="padding:8px 0;border-bottom:1px solid #dcfce7;">
                       <p style="margin:0;font-size:13px;color:#374151;">
-                        📦 <strong>Amazon Prime</strong> ger gratis frakt — värt det om du handlar ofta.
+                        📦 <strong>Amazon Prime</strong> ger gratis frakt.
                         <a href="https://www.amazon.se/amazonprime?tag=priskoll-21" style="color:#16a34a;font-weight:600;margin-left:4px;">Prova gratis →</a>
                       </p>
                     </td>
@@ -94,7 +86,7 @@ function buildWelcomeEmailHtml(userName) {
                   <tr>
                     <td style="padding:8px 0;">
                       <p style="margin:0;font-size:13px;color:#374151;">
-                        👥 <strong>Bjud in en vän</strong> och lås upp 2 extra bevakningar helt gratis.
+                        👥 <strong>Bjud in en vän</strong> och lås upp 2 extra bevakningar.
                         <a href="${APP_URL}/dashboard" style="color:#16a34a;font-weight:600;margin-left:4px;">Bjud in nu →</a>
                       </p>
                     </td>
@@ -103,70 +95,146 @@ function buildWelcomeEmailHtml(userName) {
               </div>
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
             <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 32px;text-align:center;">
               <p style="color:#9ca3af;font-size:12px;margin:0;line-height:1.6;">
-                📉 Prisfall — Helt gratis, alltid.<br/>
-                Vi tjänar en liten provision när du handlar via våra länkar, utan extra kostnad för dig.
+                📉 Prisfall — Helt gratis, alltid.
               </p>
             </td>
           </tr>
-
         </table>
       </td>
     </tr>
   </table>
 </body>
-</html>
-  `;
+</html>`;
+}
+
+function buildVerificationEmailHtml(token) {
+  const verifyUrl = `${APP_URL}/verify?token=${token}`;
+  return `
+<!DOCTYPE html>
+<html lang="sv">
+<head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#f4f7f6;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f6;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#16a34a,#22c55e);padding:36px 32px;text-align:center;">
+            <div style="font-size:40px;margin-bottom:8px;">✉️</div>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:800;">Prisfall</h1>
+            <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:14px;">Bekräfta din e-postadress</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <p style="color:#4b5563;font-size:15px;line-height:1.6;margin:0 0 24px;">
+              Hej! Klicka på knappen nedan för att bekräfta din e-postadress och börja ta emot prisnotiser.
+            </p>
+            <div style="text-align:center;margin-bottom:24px;">
+              <a href="${verifyUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;font-size:16px;font-weight:700;padding:16px 36px;border-radius:12px;text-decoration:none;">
+                Bekräfta e-post →
+              </a>
+            </div>
+            <p style="color:#6b7280;font-size:13px;margin:0 0 8px;">🕐 Länken är giltig i 24 timmar.</p>
+            <p style="color:#9ca3af;font-size:12px;margin:0;">Om du inte registrerat dig kan du ignorera detta mail.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Find users who haven't received a welcome email yet
+    // Fetch users who haven't received a welcome email yet
     const users = await base44.asServiceRole.entities.User.filter(
       { welcome_email_sent: false },
       "-created_date",
       50
     );
 
+    console.log(`sendWelcomeEmails: found ${users?.length ?? 0} users with welcome_email_sent=false`);
+
     if (!users || users.length === 0) {
-      return Response.json({ sent: 0, message: "No pending welcome emails" });
+      console.log("No pending welcome emails.");
+      return Response.json({ sent: 0, verificationSent: 0, message: "No pending welcome emails" });
     }
 
     let sentCount = 0;
+    let verificationCount = 0;
 
     for (const user of users) {
-      // Only send to users created within the last 7 days (avoid spamming old accounts)
+      if (!user.email) {
+        console.log(`Skipping user ${user.id} — no email`);
+        continue;
+      }
+
+      // Skip users older than 7 days (mark as sent without emailing)
       const createdAt = new Date(user.created_date);
       const daysSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
       if (daysSinceCreation > 7) {
-        // Mark as sent to avoid processing again, but skip actually sending
+        console.log(`Marking old user ${user.email} as welcome_email_sent without sending`);
         await base44.asServiceRole.entities.User.update(user.id, { welcome_email_sent: true });
         continue;
       }
 
-      if (!user.email) continue;
+      console.log(`Processing user ${user.email} — email_verified=${user.email_verified}`);
 
-      const html = buildWelcomeEmailHtml(user.full_name);
+      if (user.email_verified === true) {
+        // Email is verified — send welcome mail
+        console.log(`Sending welcome email to ${user.email}`);
+        const html = buildWelcomeEmailHtml(user.full_name);
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: user.email,
+          from_name: "Prisfall",
+          subject: "📉 Välkommen till Prisfall — börja spara idag!",
+          body: html,
+        });
+        await base44.asServiceRole.entities.User.update(user.id, { welcome_email_sent: true });
+        sentCount++;
+        console.log(`Welcome email sent to ${user.email}`);
+      } else {
+        // Email not verified — send verification email instead
+        const token = crypto.randomUUID();
+        const now = new Date().toISOString();
 
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: user.email,
-        from_name: "Prisfall",
-        subject: "📉 Välkommen till Prisfall — börja spara idag!",
-        body: html,
-      });
+        // Check if we already sent a verification email recently (avoid spam)
+        if (user.verification_sent_at) {
+          const sentAt = new Date(user.verification_sent_at);
+          const hoursSince = (Date.now() - sentAt.getTime()) / (1000 * 60 * 60);
+          if (hoursSince < 1) {
+            console.log(`Skipping verification for ${user.email} — sent less than 1h ago`);
+            continue;
+          }
+        }
 
-      await base44.asServiceRole.entities.User.update(user.id, { welcome_email_sent: true });
-      sentCount++;
+        console.log(`Sending verification email to ${user.email}`);
+        await base44.asServiceRole.entities.User.update(user.id, {
+          verification_token: token,
+          verification_sent_at: now,
+        });
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: user.email,
+          from_name: "Prisfall",
+          subject: "Bekräfta din e-post på Prisfall",
+          body: buildVerificationEmailHtml(token),
+        });
+        verificationCount++;
+        console.log(`Verification email sent to ${user.email}`);
+      }
     }
 
-    return Response.json({ sent: sentCount, message: `Sent ${sentCount} welcome emails` });
+    const msg = `Done: ${sentCount} welcome emails sent, ${verificationCount} verification emails sent`;
+    console.log(msg);
+    return Response.json({ sent: sentCount, verificationSent: verificationCount, message: msg });
   } catch (error) {
+    console.error("sendWelcomeEmails error:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
