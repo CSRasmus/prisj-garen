@@ -5,6 +5,7 @@ import { Flame, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice, buildAmazonUrl } from "@/lib/affiliateUtils";
+import { trackAffiliatePurchase } from "@/functions/trackAffiliatePurchase";
 
 const MIN_DATA_POINTS = 14;
 
@@ -123,10 +124,11 @@ export default function DealsSection({ products, historyByProduct }) {
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                     -{dropPct}%
                   </span>
-                  <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer">
-                    <Button className="h-11 text-sm gap-1.5 px-4 font-bold">
-                      Köp nu →
-                    </Button>
+                  <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer"
+                   onClick={() => trackAffiliatePurchase({ product_id: product.id, asin: product.asin }).catch(() => {})}>
+                   <Button className="h-11 text-sm gap-1.5 px-4 font-bold">
+                     Köp nu →
+                   </Button>
                   </a>
                 </div>
               </motion.div>

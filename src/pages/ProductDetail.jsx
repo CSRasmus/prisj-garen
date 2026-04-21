@@ -14,6 +14,7 @@ import PriceChart from "@/components/products/PriceChart";
 import PriceBadge from "@/components/products/PriceBadge";
 import { formatPrice, getPriceStatus, buildAmazonUrl } from "@/lib/affiliateUtils";
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
+import { trackAffiliatePurchase } from "@/functions/trackAffiliatePurchase";
 import { getWatcherCount } from "@/functions/getWatcherCount";
 import { useToast } from "@/components/ui/use-toast";
 import TargetPriceField from "@/components/products/TargetPriceField";
@@ -166,7 +167,8 @@ export default function ProductDetail() {
                 </div>
 
                 <div className="mt-4 flex items-center gap-3 flex-wrap">
-                  <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer">
+                  <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer"
+                    onClick={() => trackAffiliatePurchase({ product_id: product.id, asin: product.asin }).catch(() => {})}>
                     <Button className="h-12 px-6 text-base gap-2">
                       <ExternalLink className="w-4 h-4" />
                       Köp på Amazon

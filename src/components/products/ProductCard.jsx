@@ -9,6 +9,7 @@ import { formatDistanceToNow } from "date-fns";
 import { sv } from "date-fns/locale";
 import { formatPrice, buildAmazonUrl } from "@/lib/affiliateUtils";
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
+import { trackAffiliatePurchase } from "@/functions/trackAffiliatePurchase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import SparklineChart from "./SparklineChart";
@@ -35,6 +36,10 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const handleAmazonClick = () => {
+    trackAffiliatePurchase({ product_id: product.id, asin: product.asin }).catch(() => {});
+  };
 
   const state = getPriceState(priceHistory, product);
 
@@ -171,7 +176,7 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
 
             {/* Actions */}
             <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+              <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.stopPropagation(); handleAmazonClick(); }}>
                 {isLow ? (
                   <motion.div
                     animate={{ x: [0, 2, 0] }}

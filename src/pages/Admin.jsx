@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { importBestSellers } from "@/functions/importBestSellers";
@@ -33,18 +34,21 @@ export default function Admin() {
   }, []);
 
   async function loadStats() {
-    const [globalHistory, products, users] = await Promise.all([
-      base44.entities.GlobalPriceHistory.list("-checked_at", 1),
+    const [products, users, partners, allHistory] = await Promise.all([
       base44.entities.Product.list(),
       base44.entities.User.list(),
+      base44.entities.Partner.list(),
+      base44.entities.GlobalPriceHistory.list("-checked_at", 5000),
     ]);
-    // Count unique ASINs via a separate list
-    const allHistory = await base44.entities.GlobalPriceHistory.list("-checked_at", 5000);
     const uniqueAsins = new Set(allHistory.map(h => h.asin)).size;
+    const activePartners = partners.filter(p => p.active).length;
+    const totalOwed = partners.reduce((s, p) => s + (p.total_owed || 0), 0);
     setStats({
       uniqueAsins,
       totalWatchings: products.length,
       totalUsers: users.length,
+      activePartners,
+      totalOwed,
     });
   }
 
@@ -117,10 +121,12 @@ export default function Admin() {
 
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <StatCard label="Unika ASINs (GlobalHistory)" value={stats.uniqueAsins} />
             <StatCard label="Aktiva bevakningar" value={stats.totalWatchings} />
             <StatCard label="Användare" value={stats.totalUsers} />
+            <StatCard label="Aktiva partners" value={stats.activePartners} />
+            <StatCard label="Kommission utestående" value={`${stats.totalOwed} kr`} />
           </div>
         )}
 
@@ -163,6 +169,16 @@ export default function Admin() {
               {checkResult.error ? `Fel: ${checkResult.error}` : `✅ ${checkResult.message || JSON.stringify(checkResult)}`}
             </div>
           )}
+        </Section>
+
+        {/* Partner management */}
+        <Section title="🤝 Partners">
+          <p className="text-sm text-muted-foreground mb-3">
+            Hantera fysiska samarbetspartners — djurfrisörer, uppfödare, kurshållare m.fl.
+          </p>
+          <Link to="/admin/partners">
+            <Button variant="outline" className="gap-2">Hantera partners →</Button>
+          </Link>
         </Section>
 
         {/* Generate Blog Posts */}

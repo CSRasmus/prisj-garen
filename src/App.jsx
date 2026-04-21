@@ -23,6 +23,9 @@ import Katt from '@/pages/niches/Katt';
 import Barn from '@/pages/niches/Barn';
 import Elektronik from '@/pages/niches/Elektronik';
 import Hem from '@/pages/niches/Hem';
+import PartnerLanding from '@/pages/PartnerLanding.jsx';
+import AdminPartners from '@/pages/AdminPartners.jsx';
+import PartnerSignTemplate from '@/pages/PartnerSignTemplate.jsx';
 import { handleReferral } from '@/functions/handleReferral';
 
 // Capture referral code from URL and store in localStorage
@@ -71,6 +74,11 @@ const AuthenticatedApp = () => {
 
       {/* Admin */}
       <Route path="/admin" element={<Admin />} />
+
+      {/* Partner landing pages */}
+      <Route path="/p/:slug" element={<PartnerLanding />} />
+      <Route path="/admin/partners" element={<AdminPartners />} />
+      <Route path="/admin/partners/:slug/sign" element={<PartnerSignTemplate />} />
 
       {/* Niche landing pages */}
       <Route path="/hund" element={<Hund />} />
