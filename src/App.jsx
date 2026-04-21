@@ -23,9 +23,9 @@ import Katt from '@/pages/niches/Katt';
 import Barn from '@/pages/niches/Barn';
 import Elektronik from '@/pages/niches/Elektronik';
 import Hem from '@/pages/niches/Hem';
-import PartnerLanding from '@/pages/PartnerLanding.jsx';
-import AdminPartners from '@/pages/AdminPartners.jsx';
-import PartnerSignTemplate from '@/pages/PartnerSignTemplate.jsx';
+import PartnerLanding from '@/pages/PartnerLanding';
+import AdminPartners from '@/pages/AdminPartners';
+import PartnerSignTemplate from '@/pages/PartnerSignTemplate';
 import { handleReferral } from '@/functions/handleReferral';
 
 // Capture referral code from URL and store in localStorage
