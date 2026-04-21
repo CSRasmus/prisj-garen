@@ -450,6 +450,16 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="max-w-5xl mx-auto px-4 text-center text-xs text-muted-foreground space-y-3">
+          <div className="mb-4">
+            <p className="font-semibold text-foreground mb-2">Kategorier</p>
+            <div className="flex justify-center gap-4 flex-wrap">
+              <a href="/hund" className="hover:text-foreground transition-colors">🐶 Hund</a>
+              <a href="/katt" className="hover:text-foreground transition-colors">🐱 Katt</a>
+              <a href="/barn" className="hover:text-foreground transition-colors">👶 Barn</a>
+              <a href="/elektronik" className="hover:text-foreground transition-colors">📱 Elektronik</a>
+              <a href="/hem" className="hover:text-foreground transition-colors">🏠 Hem</a>
+            </div>
+          </div>
           <div className="flex justify-center gap-6 flex-wrap">
             <a href="/blogg" className="hover:text-foreground transition-colors">Blogg</a>
             <a href="/" className="hover:text-foreground transition-colors">Start</a>

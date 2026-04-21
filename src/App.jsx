@@ -18,6 +18,11 @@ import BlogPost from '@/pages/BlogPost';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
 import Admin from '@/pages/Admin';
+import Hund from '@/pages/niches/Hund';
+import Katt from '@/pages/niches/Katt';
+import Barn from '@/pages/niches/Barn';
+import Elektronik from '@/pages/niches/Elektronik';
+import Hem from '@/pages/niches/Hem';
 import { handleReferral } from '@/functions/handleReferral';
 
 // Capture referral code from URL and store in localStorage
@@ -66,6 +71,13 @@ const AuthenticatedApp = () => {
 
       {/* Admin */}
       <Route path="/admin" element={<Admin />} />
+
+      {/* Niche landing pages */}
+      <Route path="/hund" element={<Hund />} />
+      <Route path="/katt" element={<Katt />} />
+      <Route path="/barn" element={<Barn />} />
+      <Route path="/elektronik" element={<Elektronik />} />
+      <Route path="/hem" element={<Hem />} />
 
       {/* Authenticated app routes */}
       <Route element={<AppLayout />}>

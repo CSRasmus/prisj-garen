@@ -8,6 +8,14 @@ export default function Navbar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
+  const niches = [
+    { to: "/hund", label: "🐶 Hund" },
+    { to: "/katt", label: "🐱 Katt" },
+    { to: "/barn", label: "👶 Barn" },
+    { to: "/elektronik", label: "📱 Elektronik" },
+    { to: "/hem", label: "🏠 Hem" },
+  ];
+
   const links = [
     { to: "/dashboard", label: "Bevakningar", icon: Eye },
     { to: "/add", label: "Lägg till", icon: Plus },
@@ -26,6 +34,19 @@ export default function Navbar() {
             <span className="font-bold text-lg tracking-tight">Prisfall</span>
           </Link>
 
+          <div className="hidden md:flex items-center gap-0.5 border-r border-border pr-3 mr-1">
+            {niches.map((n) => (
+              <Link key={n.to} to={n.to}>
+                <Button
+                  variant={isActive(n.to) ? "secondary" : "ghost"}
+                  size="sm"
+                  className="text-xs h-7 px-2"
+                >
+                  {n.label}
+                </Button>
+              </Link>
+            ))}
+          </div>
           <div className="hidden sm:flex items-center gap-1">
             {links.map((link) => (
               <Link key={link.to} to={link.to}>
