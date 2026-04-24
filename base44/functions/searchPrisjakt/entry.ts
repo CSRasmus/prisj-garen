@@ -12,7 +12,7 @@ async function runActor(input) {
   console.log("Input:", JSON.stringify(input));
 
   if (!apiKey) throw new Error("APIFY_API_KEY saknas i miljövariabler");
-  if (!actorId) throw new Error("APIFY_PRISJAKT_ACTOR_ID saknas i miljövariabler");
+  if (!actorId) throw new Error("APIFY-PRISJAKT-ACTOR-ID saknas i miljövariabler");
 
   // Apify actor IDs with "/" must use "~" separator in URLs
   const encodedActorId = actorId.replace("/", "~");
