@@ -2,10 +2,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const APIFY_API_KEY = Deno.env.get("APIFY_API_KEY");
-const ACTOR_ID = Deno.env.get("APIFY_PRISJAKT_ACTOR_ID");
+const ACTOR_ID = Deno.env.get("APIFY-PRISJAKT-ACTOR-ID");
 
 async function fetchPrisjaktPrices(prisjakt_id) {
-  const url = `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items?token=${APIFY_API_KEY}&timeout=120`;
+  const encodedActorId = ACTOR_ID.replace("/", "~");
+  const url = `https://api.apify.com/v2/acts/${encodedActorId}/run-sync-get-dataset-items?token=${APIFY_API_KEY}&timeout=120`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
