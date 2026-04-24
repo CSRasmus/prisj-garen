@@ -31,10 +31,53 @@ async function runActor(input) {
   console.log("Response body (first 500 chars):", responseText.substring(0, 500));
 
   if (!res.ok) {
-    throw new Error(`Apify returned ${res.status}: ${responseText.substring(0, 300)}`);
+    // Try to extract structured Apify error
+    let apifyError = null;
+    try {
+      const parsed = JSON.parse(responseText);
+      apifyError = parsed?.error || null;
+    } catch { /* not JSON */ }
+
+    const err = new Error(`Apify returned ${res.status}: ${responseText.substring(0, 300)}`);
+    err.status = res.status;
+    err.apifyError = apifyError;
+    throw err;
   }
 
   return JSON.parse(responseText);
+}
+
+function mapApifyError(err) {
+  const status = err.status;
+  const type = err.apifyError?.type;
+  const msg = err.apifyError?.message || err.message;
+
+  if (type === "not-enough-usage-to-run-paid-actor" || status === 402) {
+    return {
+      code: "APIFY_OUT_OF_CREDITS",
+      userMessage: "Söktjänsten är tillfälligt otillgänglig (slut på kredit hos vår datapartner). Vi jobbar på att åtgärda detta — försök igen senare.",
+      details: msg,
+    };
+  }
+  if (status === 401 || status === 403) {
+    return {
+      code: "APIFY_AUTH_ERROR",
+      userMessage: "Söktjänsten kunde inte autentiseras. Admin har notifierats.",
+      details: msg,
+    };
+  }
+  if (status === 404) {
+    return {
+      code: "APIFY_ACTOR_NOT_FOUND",
+      userMessage: "Söktjänsten är felkonfigurerad. Admin har notifierats.",
+      details: msg,
+    };
+  }
+  return {
+    code: "APIFY_UNKNOWN_ERROR",
+    userMessage: "Söktjänsten är tillfälligt otillgänglig. Försök igen om en stund.",
+    details: msg,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -123,6 +166,10 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     console.error("searchPrisjakt error:", error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    const mapped = mapApifyError(error);
+    return Response.json(
+      { error: mapped.userMessage, code: mapped.code, details: mapped.details },
+      { status: mapped.code === "APIFY_OUT_OF_CREDITS" ? 503 : 500 }
+    );
   }
 });

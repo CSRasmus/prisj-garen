@@ -72,7 +72,9 @@ export default function AddProduct() {
         const res = await searchPrisjakt({ query: searchQuery, limit: 20, mode: "SEARCH" });
         setSearchResults(res.data?.products || []);
       } catch (e) {
-        setError(e.message);
+        // Extract server-side error message when available (axios-style)
+        const serverMsg = e.response?.data?.error || e.message || "Sökningen misslyckades";
+        setError(serverMsg);
         setSearchResults([]);
       }
       setSearching(false);
@@ -93,7 +95,8 @@ export default function AddProduct() {
       if (res.data?.error) throw new Error(res.data.error);
       setUrlResult(res.data);
     } catch (e) {
-      setError(e.message);
+      const serverMsg = e.response?.data?.error || e.message || "Kunde inte hämta produkten";
+      setError(serverMsg);
     }
     setLookingUpUrl(false);
   };

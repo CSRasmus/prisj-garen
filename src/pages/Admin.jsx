@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { importBestSellers } from "@/functions/importBestSellers";
 import { checkPrices } from "@/functions/checkPrices";
 import { generateBlogPosts } from "@/functions/generateBlogPosts";
+import ApifyStatusCard from "@/components/admin/ApifyStatusCard";
 
 export default function Admin() {
   const [user, setUser] = useState(null);
@@ -129,6 +130,9 @@ export default function Admin() {
             <StatCard label="Kommission utestående" value={`${stats.totalOwed} kr`} />
           </div>
         )}
+
+        {/* Apify connection test */}
+        <ApifyStatusCard />
 
         {/* Import Best Sellers */}
         <Section title="📦 Importera bästsäljare">
