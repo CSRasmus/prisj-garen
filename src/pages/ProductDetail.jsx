@@ -18,6 +18,7 @@ import { trackAffiliatePurchase } from "@/functions/trackAffiliatePurchase";
 import { getWatcherCount } from "@/functions/getWatcherCount";
 import { useToast } from "@/components/ui/use-toast";
 import TargetPriceField from "@/components/products/TargetPriceField";
+import ShopList from "@/components/products/ShopList";
 function StatCard({ label, value, icon: Icon, highlight = false }) {
   return (
     <div className={`rounded-xl p-4 ${highlight ? "bg-accent" : "bg-secondary/50"}`}>
@@ -166,14 +167,22 @@ export default function ProductDetail() {
                   />
                 </div>
 
+                {product.shops && (
+                  <div className="mt-4">
+                    <ShopList shops={product.shops} lowestShopName={product.lowest_shop_name} />
+                  </div>
+                )}
+
                 <div className="mt-4 flex items-center gap-3 flex-wrap">
-                  <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer"
-                    onClick={() => trackAffiliatePurchase({ product_id: product.id, asin: product.asin }).catch(() => {})}>
-                    <Button className="h-12 px-6 text-base gap-2">
-                      <ExternalLink className="w-4 h-4" />
-                      Köp på Amazon
-                    </Button>
-                  </a>
+                  {!product.shops && (
+                    <a href={buildAmazonUrl(product.asin)} target="_blank" rel="noopener noreferrer"
+                      onClick={() => trackAffiliatePurchase({ product_id: product.id, asin: product.asin }).catch(() => {})}>
+                      <Button className="h-12 px-6 text-base gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        Köp på Amazon
+                      </Button>
+                    </a>
+                  )}
                   <ShareDealButton product={product} className="h-12 px-5 text-base" />
                   <Button className="h-12 px-5 text-base gap-2" variant="outline" onClick={handleRefreshPrice} disabled={refreshing}>
                     <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />

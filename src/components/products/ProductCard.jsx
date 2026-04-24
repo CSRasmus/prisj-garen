@@ -13,6 +13,7 @@ import { trackAffiliatePurchase } from "@/functions/trackAffiliatePurchase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import SparklineChart from "./SparklineChart";
+import ShopList from "./ShopList";
 
 const MIN_DATA_POINTS = 14;
 
@@ -171,6 +172,13 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
               <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="w-3 h-3" />
                 Uppdaterad {lastChecked}
+              </div>
+            )}
+
+            {/* Multi-shop info */}
+            {product.shops && (
+              <div className="mt-2">
+                <ShopList shops={product.shops} lowestShopName={product.lowest_shop_name} />
               </div>
             )}
 

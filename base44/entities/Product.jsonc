@@ -4,11 +4,19 @@
   "properties": {
     "title": {
       "type": "string",
-      "description": "Product title from Amazon"
+      "description": "Product title"
     },
     "asin": {
       "type": "string",
-      "description": "Amazon Standard Identification Number"
+      "description": "Legacy Amazon ASIN or used as fallback product key"
+    },
+    "prisjakt_id": {
+      "type": "string",
+      "description": "Prisjakt internal product ID"
+    },
+    "prisjakt_url": {
+      "type": "string",
+      "description": "URL to the product page on Prisjakt"
     },
     "image_url": {
       "type": "string",
@@ -16,11 +24,11 @@
     },
     "amazon_url": {
       "type": "string",
-      "description": "Original Amazon product URL"
+      "description": "Original Amazon product URL (if added via Amazon)"
     },
     "current_price": {
       "type": "number",
-      "description": "Current price in SEK"
+      "description": "Current lowest price in SEK across all shops"
     },
     "currency": {
       "type": "string",
@@ -57,11 +65,27 @@
     },
     "target_price": {
       "type": "number",
-      "description": "User-defined target price (premium feature). Null = use automatic 90-day logic."
+      "description": "User-defined target price. Null = use automatic 90-day logic."
+    },
+    "shops": {
+      "type": "string",
+      "description": "JSON string of all shops and their prices: [{shop_name, price, product_url, in_stock}]"
+    },
+    "primary_shop": {
+      "type": "string",
+      "description": "The shop currently offering the lowest price"
+    },
+    "lowest_shop_name": {
+      "type": "string",
+      "description": "Name of shop with the lowest price"
+    },
+    "is_multi_shop": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if product is available from multiple shops"
     }
   },
   "required": [
-    "title",
-    "asin"
+    "title"
   ]
 }
