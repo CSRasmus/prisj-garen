@@ -58,8 +58,10 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
     const prevLow = product.is_low_price;
     try {
       await fetchProductPrice({ product_id: product.id, asin: product.asin });
+      // Bug 3 fix: invalidate and refetch, then check the refreshed data via onSuccess callback pattern
       await queryClient.invalidateQueries({ queryKey: ["products"] });
       await queryClient.invalidateQueries({ queryKey: ["priceHistory"] });
+      // After refetch settles, check if product became low price
       const freshProducts = await queryClient.fetchQuery({
         queryKey: ["products"],
         queryFn: () => queryClient.getQueryData(["products"]),
@@ -68,9 +70,8 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
       const updated = Array.isArray(freshProducts) ? freshProducts.find(p => p.id === product.id) : null;
       if (updated?.is_low_price && !prevLow) onPriceDrop?.();
       toast({ title: "Priset har uppdaterats!" });
-    } catch (e) {
-      const serverMsg = e.response?.data?.error || "Kunde inte hämta pris, försök igen";
-      toast({ title: "Kunde inte uppdatera pris", description: serverMsg, variant: "destructive" });
+    } catch (_) {
+      toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
     }
     setRefreshing(false);
   };

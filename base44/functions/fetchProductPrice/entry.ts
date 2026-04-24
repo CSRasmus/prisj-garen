@@ -2,55 +2,44 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 
-// Parse Amazon price strings like "2,171.49" or "2 171,49 kr" into a float.
-function parsePrice(raw) {
-  if (raw == null) return null;
-  if (typeof raw === "number") return raw;
-  const cleaned = String(raw).replace(/\s/g, "").replace(/,(\d{3})/g, "$1").replace(",", ".").replace(/[^\d.]/g, "");
-  const n = parseFloat(cleaned);
-  return Number.isFinite(n) ? n : null;
-}
+async function fetchEasyparserProduct(asin) {
+  const doFetch = () => {
+    const params = new URLSearchParams({ api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL" });
+    return fetch(`https://realtime.easyparser.com/v1/request?${params}`);
+  };
 
-async function fetchFromEasyparser(asin) {
-  const params = new URLSearchParams({
-    api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL",
-  });
-  const doFetch = () => fetch(`https://realtime.easyparser.com/v1/request?${params}`);
   let res = await doFetch();
   if (!res.ok) {
     console.warn(`Easyparser ${res.status} for ${asin}, retrying...`);
     await new Promise(r => setTimeout(r, 3000));
     res = await doFetch();
-    if (!res.ok) throw new Error(`Easyparser svarade med ${res.status}`);
+    if (!res.ok) throw new Error(`Easyparser HTTP ${res.status}`);
   }
   const data = await res.json();
-  if (!data.request_info?.success || data.request_info?.status_code === 404) {
-    throw new Error("Kunde inte hitta produkten på Amazon.se");
+  console.log(`Easyparser request_info for ${asin}:`, JSON.stringify(data.request_info));
+  if (data.request_info?.status_code === 404 || !data.result?.detail) {
+    throw new Error(`Produkten hittades inte på Amazon.se (ASIN: ${asin})`);
   }
-  const product = data.result?.detail;
-  if (!product) throw new Error("Ingen produktdata från Easyparser");
-
-  const priceRaw = product.buybox_winner?.price?.value ?? product.price?.value ?? null;
-  const price = parsePrice(priceRaw);
-  if (!price || price < 1) throw new Error(`Ogiltigt pris från Easyparser: ${priceRaw}`);
-
-  return {
-    title: product.title,
-    image_url: product.main_image?.link || product.images?.[0]?.link || null,
-    price,
-  };
+  if (!data.request_info?.success) {
+    throw new Error(`Easyparser: ${JSON.stringify(data.request_info?.error_details || data.request_info).substring(0, 200)}`);
+  }
+  return data.result.detail;
 }
 
-async function saveToGlobalHistory(base44, asin, price, now) {
+// Save to GlobalPriceHistory — one entry per ASIN per day
+async function saveToGlobalHistory(base44, asin, price, currency, now) {
   const today = now.substring(0, 10);
-  const existing = await base44.asServiceRole.entities.GlobalPriceHistory.filter({ asin }, "-checked_at", 5);
+  const existing = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+    { asin, amazon_domain: "amazon.se" }, "-checked_at", 5
+  );
   const alreadySavedToday = existing.some(h => h.checked_at?.substring(0, 10) === today);
   if (!alreadySavedToday) {
     await base44.asServiceRole.entities.GlobalPriceHistory.create({
-      asin, price, currency: "SEK", checked_at: now, amazon_domain: "amazon.se", shop_name: "Amazon.se",
+      asin, price, currency, checked_at: now, amazon_domain: "amazon.se"
     });
   }
 }
+
 
 Deno.serve(async (req) => {
   try {
@@ -58,40 +47,65 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (!EASYPARSER_API_KEY) return Response.json({ error: "EASYPARSER_API_KEY saknas" }, { status: 500 });
-
     const { product_id, asin } = await req.json();
-    if (!asin) return Response.json({ error: 'ASIN krävs' }, { status: 400 });
+    if (!asin) return Response.json({ error: 'ASIN required' }, { status: 400 });
 
-    console.log(`fetchProductPrice: asin=${asin} product_id=${product_id}`);
+    console.log(`Fetching price via Easyparser for ASIN: ${asin}`);
 
-    const { price, image_url } = await fetchFromEasyparser(asin);
+    const product = await fetchEasyparserProduct(asin);
+
+    // Debug: log exact price fields
+    console.log("buybox_winner:", JSON.stringify(product.buybox_winner));
+    console.log("product.price:", JSON.stringify(product.price));
+    console.log("product.rrp:", JSON.stringify(product.rrp));
+
+    const priceRaw = product.buybox_winner?.price?.value ?? product.price?.value ?? product.rrp?.value ?? null;
+    // Handle both "2,171.49" (thousands separator) and "2 171,49" (European style)
+    const price = priceRaw !== null
+      ? parseFloat(String(priceRaw).replace(/\s/g, "").replace(/,(\d{3})/g, "$1").replace(",", "."))
+      : NaN;
+    console.log("priceRaw:", priceRaw, "-> parsed:", price);
+
+    if (!price || price < 1 || price > 100000) throw new Error(`Invalid price: ${priceRaw} -> ${price}`);
+
+    const currency = "SEK";
     const now = new Date().toISOString();
+    console.log(`Got price: ${price} SEK for ${asin}`);
 
-    if (!product_id) return Response.json({ success: true, price, currency: "SEK" });
+    if (!product_id) return Response.json({ success: true, price, currency });
 
-    await saveToGlobalHistory(base44, asin, price, now);
-    await base44.entities.PriceHistory.create({ product_id, price, currency: "SEK", checked_at: now });
+    // Easyparser does not provide price_history — seed today only
+    await saveToGlobalHistory(base44, asin, price, currency, now);
 
-    const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter({ asin, amazon_domain: "amazon.se" }, "-checked_at", 500);
+    // Save to user's PriceHistory
+    await base44.entities.PriceHistory.create({ product_id, price, currency, checked_at: now });
+
+    // Compute 90d stats from all available global data for this ASIN
+    const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+      { asin, amazon_domain: "amazon.se" }, "-checked_at", 500
+    );
     const allPrices = [...globalHistory.map(h => h.price), price].filter(p => p > 0);
-    const lowestPrice90d = Math.min(...allPrices);
-    const highestPrice90d = Math.max(...allPrices);
-    const isLowPrice = price <= lowestPrice90d * 1.05;
+    const lowestPrice = Math.min(...allPrices);
+    const highestPrice = Math.max(...allPrices);
+    const isLowPrice = price <= lowestPrice * 1.05;
 
     const updateData = {
-      current_price: price, currency: "SEK",
-      lowest_price_90d: lowestPrice90d, highest_price_90d: highestPrice90d,
-      is_low_price: isLowPrice, last_checked: now,
+      current_price: price,
+      currency,
+      lowest_price_90d: lowestPrice,
+      highest_price_90d: highestPrice,
+      is_low_price: isLowPrice,
+      last_checked: now,
     };
-    if (image_url) updateData.image_url = image_url;
+    const imageUrl = product.main_image?.link || product.images?.[0]?.link;
+    if (imageUrl) updateData.image_url = imageUrl;
 
     await base44.entities.Product.update(product_id, updateData);
-    console.log(`fetchProductPrice ok: asin=${asin} price=${price}`);
+    console.log(`Saved to DB. isLow=${isLowPrice} low90=${lowestPrice} high90=${highestPrice}`);
 
-    return Response.json({ success: true, price, currency: "SEK" });
+    return Response.json({ success: true, price, currency });
   } catch (error) {
     console.error("fetchProductPrice error:", error.message);
-    return Response.json({ error: error.message || "Okänt fel" }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 });

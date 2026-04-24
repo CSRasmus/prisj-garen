@@ -4,7 +4,7 @@
   "properties": {
     "asin": {
       "type": "string",
-      "description": "Product key \u2014 either Prisjakt ID or Amazon ASIN"
+      "description": "Amazon ASIN \u2014 shared across all users"
     },
     "price": {
       "type": "number",
@@ -21,12 +21,7 @@
     },
     "amazon_domain": {
       "type": "string",
-      "default": "prisjakt.nu",
-      "description": "Source domain (prisjakt.nu or amazon.se)"
-    },
-    "shop_name": {
-      "type": "string",
-      "description": "Name of the shop that had the lowest price at this time"
+      "default": "amazon.se"
     }
   },
   "required": [
