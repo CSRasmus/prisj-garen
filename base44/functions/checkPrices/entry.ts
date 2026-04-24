@@ -1,122 +1,95 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const APIFY_API_KEY = Deno.env.get("APIFY_API_KEY");
-const ACTOR_ID = Deno.env.get("APIFY-PRISJAKT-ACTOR-ID");
+const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
 
-// ---------- Shared Apify helpers ----------
-async function runActor(input) {
-  if (!APIFY_API_KEY) { const e = new Error("APIFY_API_KEY saknas"); e.code = "CONFIG"; throw e; }
-  if (!ACTOR_ID) { const e = new Error("APIFY-PRISJAKT-ACTOR-ID saknas"); e.code = "CONFIG"; throw e; }
-  const encodedActorId = ACTOR_ID.replace("/", "~");
-  const url = `https://api.apify.com/v2/acts/${encodedActorId}/run-sync-get-dataset-items?token=${APIFY_API_KEY}&timeout=120`;
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
-  const responseText = await res.text();
+function parsePrice(raw) {
+  if (raw == null) return null;
+  if (typeof raw === "number") return raw;
+  const cleaned = String(raw).replace(/\s/g, "").replace(/,(\d{3})/g, "$1").replace(",", ".").replace(/[^\d.]/g, "");
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function fetchFromEasyparser(asin) {
+  const params = new URLSearchParams({
+    api_key: EASYPARSER_API_KEY, platform: "AMZ", domain: ".se", asin, output: "json", operation: "DETAIL",
+  });
+  const doFetch = () => fetch(`https://realtime.easyparser.com/v1/request?${params}`);
+  let res = await doFetch();
   if (!res.ok) {
-    let apifyError = null;
-    try { apifyError = JSON.parse(responseText)?.error || null; } catch { /* noop */ }
-    const err = new Error(`Apify ${res.status}: ${responseText.substring(0, 300)}`);
-    err.status = res.status; err.apifyError = apifyError; err.rawBody = responseText;
-    throw err;
+    await new Promise(r => setTimeout(r, 3000));
+    res = await doFetch();
+    if (!res.ok) throw new Error(`Easyparser ${res.status}`);
   }
-  return JSON.parse(responseText);
+  const data = await res.json();
+  if (!data.request_info?.success || data.request_info?.status_code === 404) throw new Error("Produkten hittades inte");
+  const product = data.result?.detail;
+  if (!product) throw new Error("Ingen produktdata");
+  const priceRaw = product.buybox_winner?.price?.value ?? product.price?.value ?? null;
+  const price = parsePrice(priceRaw);
+  if (!price || price < 1) throw new Error(`Ogiltigt pris: ${priceRaw}`);
+  return { title: product.title, image_url: product.main_image?.link || product.images?.[0]?.link || null, price };
 }
 
-function classifyApifyError(err) {
-  if (err.code === "CONFIG") return "APIFY_CONFIG_MISSING";
-  const type = err.apifyError?.type;
-  if (type === "not-enough-usage-to-run-paid-actor" || err.status === 402) return "APIFY_OUT_OF_CREDITS";
-  if (err.status === 401 || err.status === 403) return "APIFY_AUTH_ERROR";
-  if (err.status === 404) return "APIFY_ACTOR_NOT_FOUND";
-  return "APIFY_UNKNOWN_ERROR";
-}
-// ---------- End shared helpers ----------
-
-async function fetchPrisjaktPrices(pid) {
-  const items = await runActor({ productId: pid, mode: "PRODUCT_DETAIL" });
-  if (!items.length) throw new Error(`Ingen prisdata för: ${pid}`);
-  const item = items[0];
-  const shops = (item.offers || item.shops || item.prices || []).map(o => ({
-    shop_name: o.shopName || o.shop_name || o.seller || o.name,
-    shop_url: o.shopUrl || o.shop_url,
-    price: typeof o.price === "number" ? o.price : parseFloat(String(o.price || "0").replace(/[^\d.]/g, "")),
-    product_url: o.productUrl || o.product_url || o.url || o.buyUrl,
-    in_stock: o.inStock ?? o.in_stock ?? true,
-  })).filter(s => s.shop_name && s.price > 0);
-  const prices = shops.map(s => s.price);
-  const lowest_price = prices.length ? Math.min(...prices) : null;
-  const lowest_shop = shops.find(s => s.price === lowest_price);
-  return {
-    shops,
-    lowest_price,
-    highest_price: prices.length ? Math.max(...prices) : null,
-    lowest_shop_name: lowest_shop?.shop_name || null,
-    lowest_shop_url: lowest_shop?.product_url || null,
-    image_url: item.image || item.imageUrl || item.image_url || null,
-  };
-}
-
-async function saveToGlobalHistory(base44, asin, price, shop_name, now) {
+async function saveToGlobalHistory(base44, asin, price, now) {
   const today = now.substring(0, 10);
   const existing = await base44.asServiceRole.entities.GlobalPriceHistory.filter({ asin }, "-checked_at", 5);
   const alreadySavedToday = existing.some(h => h.checked_at?.substring(0, 10) === today);
   if (!alreadySavedToday) {
     await base44.asServiceRole.entities.GlobalPriceHistory.create({
-      asin, price, currency: "SEK", checked_at: now, amazon_domain: "prisjakt.nu", shop_name,
+      asin, price, currency: "SEK", checked_at: now, amazon_domain: "amazon.se", shop_name: "Amazon.se",
     });
     return true;
   }
   return false;
 }
 
-async function fetchAndSavePrice(base44, product, globalUpdatedPids) {
-  const pid = product.prisjakt_id || product.asin;
-  const data = await fetchPrisjaktPrices(pid);
-  const { shops, lowest_price, lowest_shop_name, lowest_shop_url, image_url } = data;
-  if (!lowest_price || lowest_price < 1) throw new Error(`Ogiltigt pris: ${lowest_price}`);
-
-  const currency = "SEK";
+async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
+  const asin = product.asin;
+  if (!asin) throw new Error("Saknar ASIN");
+  const { price, image_url } = await fetchFromEasyparser(asin);
   const now = new Date().toISOString();
 
-  if (!globalUpdatedPids.has(pid)) {
-    const saved = await saveToGlobalHistory(base44, pid, lowest_price, lowest_shop_name, now);
-    if (saved) globalUpdatedPids.add(pid);
+  if (!globalUpdatedAsins.has(asin)) {
+    const saved = await saveToGlobalHistory(base44, asin, price, now);
+    if (saved) globalUpdatedAsins.add(asin);
   }
 
-  await base44.asServiceRole.entities.PriceHistory.create({ product_id: product.id, price: lowest_price, currency, checked_at: now });
+  await base44.asServiceRole.entities.PriceHistory.create({ product_id: product.id, price, currency: "SEK", checked_at: now });
 
-  const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter({ asin: pid }, "-checked_at", 500);
-  const allPrices = [...globalHistory.map(h => h.price), lowest_price].filter(v => v > 0);
+  const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter({ asin, amazon_domain: "amazon.se" }, "-checked_at", 500);
+  const allPrices = [...globalHistory.map(h => h.price), price].filter(v => v > 0);
   const lowestPrice90d = Math.min(...allPrices);
   const highestPrice90d = Math.max(...allPrices);
   const avgPrice = Math.round(allPrices.reduce((a, b) => a + b, 0) / allPrices.length);
-  const isLowPrice = lowest_price <= lowestPrice90d * 1.05;
-  const percentFromAvg = avgPrice > 0 ? ((avgPrice - lowest_price) / avgPrice) * 100 : 0;
+  const isLowPrice = price <= lowestPrice90d * 1.05;
+  const percentFromAvg = avgPrice > 0 ? ((avgPrice - price) / avgPrice) * 100 : 0;
 
   const updateData = {
-    current_price: lowest_price, currency,
+    current_price: price, currency: "SEK",
     lowest_price_90d: lowestPrice90d, highest_price_90d: highestPrice90d,
     is_low_price: isLowPrice, last_checked: now,
-    shops: JSON.stringify(shops), lowest_shop_name,
-    is_multi_shop: shops.length > 1, primary_shop: lowest_shop_name,
   };
   if (image_url) updateData.image_url = image_url;
-
   await base44.asServiceRole.entities.Product.update(product.id, updateData);
 
   const hasTargetPrice = product.target_price && product.target_price > 0;
-  const meetsTargetPrice = hasTargetPrice && lowest_price <= product.target_price;
+  const meetsTargetPrice = hasTargetPrice && price <= product.target_price;
   const meetsPctThreshold = !hasTargetPrice && percentFromAvg >= 5;
   const qualifies = (meetsTargetPrice || meetsPctThreshold) && product.notify_on_drop && product.created_by;
 
-  return { price: lowest_price, isLowPrice, avgPrice, lowestPrice: lowestPrice90d, highestPrice: highestPrice90d, percentFromAvg, qualifies, hasTargetPrice, currency, imageUrl: image_url, lowest_shop_name, lowest_shop_url };
+  return { price, isLowPrice, avgPrice, percentFromAvg, qualifies, hasTargetPrice, imageUrl: image_url };
+}
+
+function buildAmazonUrl(asin) {
+  return `https://www.amazon.se/dp/${asin}?tag=priskoll-21`;
 }
 
 function buildProductRow(product, result) {
   const appUrl = `https://prisfall.se/product/${product.id}`;
-  const buyUrl = result.lowest_shop_url || `https://prisjakt.nu`;
+  const buyUrl = buildAmazonUrl(product.asin);
   const discount = result.avgPrice > 0 ? Math.round(((result.avgPrice - result.price) / result.avgPrice) * 100) : 0;
-  const shopLabel = result.lowest_shop_name || "bästa butiken";
   const imageHtml = result.imageUrl
     ? `<img src="${result.imageUrl}" width="80" height="80" style="object-fit:contain;border-radius:8px;background:#f9fafb;padding:4px" />`
     : `<div style="width:80px;height:80px;background:#16a34a;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:28px">${product.title.charAt(0)}</div>`;
@@ -129,11 +102,10 @@ function buildProductRow(product, result) {
         <span style="color:#16a34a;font-size:1.4em;font-weight:bold">${result.price} kr</span>
         <span style="color:#9ca3af;text-decoration:line-through;margin-left:8px;font-size:0.9em">${result.avgPrice} kr</span>
         <br/>
-        <span style="font-size:0.85em;color:#555;margin-top:4px;display:block">🏪 Lägst på: <strong>${shopLabel}</strong></span>
         <span style="background:#dcfce7;color:#16a34a;padding:3px 8px;border-radius:4px;font-size:0.8em;display:inline-block;margin-top:6px">${badgeText}</span>
         <br/>
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-          <a href="${buyUrl}" style="background:#16a34a;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px">Köp på ${shopLabel} →</a>
+          <a href="${buyUrl}" style="background:#16a34a;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px">Köp på Amazon →</a>
           <a href="${appUrl}" style="background:#f3f4f6;color:#333;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:13px">Visa i Prisfall</a>
         </div>
       </div>
@@ -152,7 +124,7 @@ async function sendSummaryEmail(base44, userEmail, qualifiedProducts, totalWatch
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#222;background:#f9fafb;padding:24px;border-radius:16px">
       <div style="text-align:center;margin-bottom:24px">
         <h1 style="color:#16a34a;font-size:1.6em;margin:0">🔥 Prisfall</h1>
-        <p style="color:#6b7280;margin:4px 0 0">Din prisbevakning från svenska butiker</p>
+        <p style="color:#6b7280;margin:4px 0 0">Din prisbevakning på Amazon.se</p>
       </div>
       <div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;border:1px solid #e5e7eb">
         <h2 style="margin:0 0 16px;font-size:1.2em">${subject.replace(/^🔥 /, '')}</h2>
@@ -178,6 +150,7 @@ Deno.serve(async (req) => {
       const provided = url.searchParams.get("secret");
       if (provided !== CRON_SECRET) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (!EASYPARSER_API_KEY) return Response.json({ error: "EASYPARSER_API_KEY saknas" }, { status: 500 });
 
     const base44 = createClientFromRequest(req);
     const products = await base44.asServiceRole.entities.Product.list();
@@ -185,10 +158,8 @@ Deno.serve(async (req) => {
 
     let updated = 0;
     const errors = [];
-    const errorCounts = {};
-    const globalUpdatedPids = new Set();
+    const globalUpdatedAsins = new Set();
     const userNotifyMap = {};
-    let apifyBroken = false; // abort early if credits/auth fails on first product
 
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
@@ -197,26 +168,15 @@ Deno.serve(async (req) => {
         userNotifyMap[product.created_by].totalWatched++;
       }
 
-      if (apifyBroken) {
-        errors.push({ id: product.prisjakt_id || product.asin, error: "Skipped — Apify integration broken" });
-        continue;
-      }
-
       try {
-        const result = await fetchAndSavePrice(base44, product, globalUpdatedPids);
+        const result = await fetchAndSavePrice(base44, product, globalUpdatedAsins);
         updated++;
         if (result.qualifies && product.created_by) userNotifyMap[product.created_by].qualifiedProducts.push({ product, result });
       } catch (err) {
-        const code = classifyApifyError(err);
-        errorCounts[code] = (errorCounts[code] || 0) + 1;
-        console.error(`Failed ${product.prisjakt_id || product.asin}: ${code} — ${err.message}`);
-        errors.push({ id: product.prisjakt_id || product.asin, code, error: err.message.substring(0, 200) });
-        if (code === "APIFY_OUT_OF_CREDITS" || code === "APIFY_AUTH_ERROR" || code === "APIFY_CONFIG_MISSING" || code === "APIFY_ACTOR_NOT_FOUND") {
-          console.error(`ABORT: ${code} — skipping remaining ${products.length - i - 1} products`);
-          apifyBroken = true;
-        }
+        console.error(`Failed ${product.asin}: ${err.message}`);
+        errors.push({ asin: product.asin, error: err.message.substring(0, 200) });
       }
-      if (i < products.length - 1 && !apifyBroken) await new Promise(r => setTimeout(r, 2000));
+      if (i < products.length - 1) await new Promise(r => setTimeout(r, 2000));
     }
 
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -235,9 +195,9 @@ Deno.serve(async (req) => {
       emailsSent++;
     }
 
-    const msg = `Price update: ${updated}/${products.length} updated, ${emailsSent} emails. Errors: ${JSON.stringify(errorCounts)}`;
+    const msg = `Price update: ${updated}/${products.length} updated, ${emailsSent} emails sent.`;
     console.log(msg);
-    return Response.json({ message: msg, updated, total: products.length, emailsSent, errors, errorCounts, aborted: apifyBroken });
+    return Response.json({ message: msg, updated, total: products.length, emailsSent, errors });
   } catch (error) {
     console.error("checkPrices fatal:", error.message);
     return Response.json({ error: error.message }, { status: 500 });

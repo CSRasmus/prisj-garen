@@ -13,7 +13,6 @@ import { trackAffiliatePurchase } from "@/functions/trackAffiliatePurchase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import SparklineChart from "./SparklineChart";
-import ShopList from "./ShopList";
 
 const MIN_DATA_POINTS = 14;
 
@@ -58,7 +57,7 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
     setRefreshing(true);
     const prevLow = product.is_low_price;
     try {
-      await fetchProductPrice({ product_id: product.id, prisjakt_id: product.prisjakt_id, asin: product.asin });
+      await fetchProductPrice({ product_id: product.id, asin: product.asin });
       await queryClient.invalidateQueries({ queryKey: ["products"] });
       await queryClient.invalidateQueries({ queryKey: ["priceHistory"] });
       const freshProducts = await queryClient.fetchQuery({
@@ -171,13 +170,6 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
               <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="w-3 h-3" />
                 Uppdaterad {lastChecked}
-              </div>
-            )}
-
-            {/* Multi-shop info */}
-            {product.shops && (
-              <div className="mt-2">
-                <ShopList shops={product.shops} lowestShopName={product.lowest_shop_name} />
               </div>
             )}
 
