@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { importBestSellers } from "@/functions/importBestSellers";
 import { checkPrices } from "@/functions/checkPrices";
 import { generateBlogPosts } from "@/functions/generateBlogPosts";
+import { adminImportHistories } from "@/functions/adminImportHistories";
 
 export default function Admin() {
   const [user, setUser] = useState(null);
@@ -20,6 +21,10 @@ export default function Admin() {
 
   const [blogRunning, setBlogRunning] = useState(false);
   const [blogResult, setBlogResult] = useState(null);
+
+  const [historyRunning, setHistoryRunning] = useState(false);
+  const [historyResult, setHistoryResult] = useState(null);
+  const [historyLogs, setHistoryLogs] = useState([]);
 
   useEffect(() => {
     async function init() {
@@ -77,6 +82,20 @@ export default function Admin() {
       setCheckResult({ error: err.message });
     }
     setCheckRunning(false);
+  }
+
+  async function runImportHistories() {
+    setHistoryRunning(true);
+    setHistoryResult(null);
+    setHistoryLogs([]);
+    try {
+      const res = await adminImportHistories({});
+      setHistoryResult(res.data);
+      setHistoryLogs(res.data?.logs || []);
+    } catch (err) {
+      setHistoryResult({ error: err.message });
+    }
+    setHistoryRunning(false);
   }
 
   async function runGenerateBlog() {
@@ -179,6 +198,32 @@ export default function Admin() {
           <Link to="/admin/partners">
             <Button variant="outline" className="gap-2">Hantera partners →</Button>
           </Link>
+        </Section>
+
+        {/* Import 12-month history */}
+        <Section title="📈 Hämta prishistorik (12 mån) för alla produkter">
+          <p className="text-sm text-muted-foreground mb-3">
+            Kör <code>fetchProductHistory</code> för varje unik ASIN som saknar historisk import. 1 sekund mellan anrop. Detta kostar Easyparser-credits (en per produkt).
+          </p>
+          <Button onClick={runImportHistories} disabled={historyRunning} variant="outline" className="gap-2">
+            {historyRunning ? <><Spinner /> Importerar historik...</> : "Hämta historik för alla produkter utan historik"}
+          </Button>
+
+          {historyResult && !historyRunning && (
+            <div className={`mt-3 text-sm px-4 py-3 rounded-lg ${historyResult.error ? "bg-destructive/10 text-destructive" : "bg-accent text-accent-foreground"}`}>
+              {historyResult.error
+                ? `Fel: ${historyResult.error}`
+                : `✅ ${historyResult.uniqueAsins} unika ASINs: ${historyResult.imported} importerade, ${historyResult.skipped} hoppades över, ${historyResult.failed} fel`}
+            </div>
+          )}
+
+          {historyLogs.length > 0 && (
+            <div className="mt-3 bg-muted rounded-lg p-3 max-h-64 overflow-y-auto">
+              {historyLogs.map((log, i) => (
+                <p key={i} className="text-xs font-mono text-muted-foreground">{log}</p>
+              ))}
+            </div>
+          )}
         </Section>
 
         {/* Generate Blog Posts */}

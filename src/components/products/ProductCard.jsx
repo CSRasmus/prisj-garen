@@ -125,7 +125,7 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
               </Link>
               {state === "watching" && (
                 <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground whitespace-nowrap">
-                  ⏳ Bevakar...
+                  ⏳ Hämtar prishistorik...
                 </span>
               )}
               {state === "low" && (
@@ -149,7 +149,7 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
                   </span>
                 </div>
                 {state === "watching" && (
-                  <p className="text-xs text-muted-foreground mt-0.5">Kom tillbaka om några dagar</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Laddar 12 månaders historik...</p>
                 )}
                 {/* Bug 2 fix: only show if savingsDiff > 0 */}
                 {showSavings && (

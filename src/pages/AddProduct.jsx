@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Search, Plus, Loader2, Link2, AlertCircle } from "lucide-react";
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
 import { lookupProduct } from "@/functions/lookupProduct";
+import { fetchProductHistory } from "@/functions/fetchProductHistory";
 import { motion } from "framer-motion";
 import { getMaxProducts } from "@/lib/shareUtils";
 import { buildAmazonUrl } from "@/lib/affiliateUtils";
@@ -139,8 +140,12 @@ export default function AddProduct() {
         toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
       }
       setFetchingPrice(false);
+
+      // Fire-and-forget: import 12-month history in the background
+      fetchProductHistory({ asin: created.asin }).catch(() => {});
+
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast({ title: "Produkt tillagd!", description: "Priset är nu hämtat och bevakning startar." });
+      toast({ title: "Produkt tillagd!", description: "Hämtar prishistorik i bakgrunden..." });
       navigate("/dashboard");
     },
     onError: (err) => setError(err.message),

@@ -4,7 +4,7 @@
   "properties": {
     "asin": {
       "type": "string",
-      "description": "Amazon ASIN \u2014 shared across all users"
+      "description": "Product key \u2014 either Prisjakt ID or Amazon ASIN"
     },
     "price": {
       "type": "number",
@@ -21,7 +21,21 @@
     },
     "amazon_domain": {
       "type": "string",
-      "default": "amazon.se"
+      "default": "prisjakt.nu",
+      "description": "Source domain (prisjakt.nu or amazon.se)"
+    },
+    "shop_name": {
+      "type": "string",
+      "description": "Name of the shop that had the lowest price at this time"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "live",
+        "easyparser_historical"
+      ],
+      "default": "live",
+      "description": "How this datapoint was obtained: 'live' = scraped in real-time, 'easyparser_historical' = imported from Easyparser SALES_ANALYSIS_HISTORY"
     }
   },
   "required": [
