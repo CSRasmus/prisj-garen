@@ -9,6 +9,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const niches = [
+    { to: "/deals", label: "🔥 Deals" },
     { to: "/hund", label: "🐶 Hund" },
     { to: "/katt", label: "🐱 Katt" },
     { to: "/barn", label: "👶 Barn" },

@@ -15,6 +15,7 @@ import AddProduct from '@/pages/AddProduct';
 import ProductDetail from '@/pages/ProductDetail';
 import Blog from '@/pages/Blog';
 import BlogPost from '@/pages/BlogPost';
+import Deals from '@/pages/Deals';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
 import Admin from '@/pages/Admin';
@@ -67,6 +68,9 @@ const AuthenticatedApp = () => {
       {/* Public blog routes */}
       <Route path="/blogg" element={<Blog />} />
       <Route path="/blogg/:slug" element={<BlogPost />} />
+
+      {/* Public deals page */}
+      <Route path="/deals" element={<Deals />} />
 
       {/* Public legal routes */}
       <Route path="/integritetspolicy" element={<Privacy />} />

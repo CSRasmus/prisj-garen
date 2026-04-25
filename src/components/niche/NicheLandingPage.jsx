@@ -336,6 +336,7 @@ export default function NicheLandingPage({
           </div>
           <div className="flex justify-center gap-6 flex-wrap">
             <Link to="/" className="hover:text-foreground transition-colors">Start</Link>
+            <Link to="/deals" className="hover:text-foreground transition-colors">🔥 Dagens deals</Link>
             <Link to="/blogg" className="hover:text-foreground transition-colors">Blogg</Link>
             <Link to="/integritetspolicy" className="hover:text-foreground transition-colors">Integritetspolicy</Link>
             <Link to="/villkor" className="hover:text-foreground transition-colors">Villkor</Link>

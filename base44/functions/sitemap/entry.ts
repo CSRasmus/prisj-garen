@@ -11,6 +11,12 @@ Deno.serve(async (req) => {
     // Static pages
     xml += '  <url>\n    <loc>https://prisfall.se/</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n';
     xml += '  <url>\n    <loc>https://prisfall.se/blogg</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.8</priority>\n  </url>\n';
+    xml += '  <url>\n    <loc>https://prisfall.se/deals</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n';
+    xml += '  <url>\n    <loc>https://prisfall.se/hund</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n';
+    xml += '  <url>\n    <loc>https://prisfall.se/katt</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n';
+    xml += '  <url>\n    <loc>https://prisfall.se/barn</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n';
+    xml += '  <url>\n    <loc>https://prisfall.se/elektronik</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n';
+    xml += '  <url>\n    <loc>https://prisfall.se/hem</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n';
 
     // Blog posts
     posts.forEach(post => {
