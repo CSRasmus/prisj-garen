@@ -7,6 +7,8 @@ function parsePrice(raw) {
   return parseFloat(String(raw).replace(/\s/g, "").replace(/,(\d{3})/g, "$1").replace(",", "."));
 }
 
+const CRON_SECRET = Deno.env.get("CRON_SECRET");
+
 async function fetchDetail(asin) {
   const params = new URLSearchParams({
     api_key: EASYPARSER_API_KEY,
@@ -30,6 +32,19 @@ async function fetchDetail(asin) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+
+    // Auth: allow CRON_SECRET (scheduled) OR admin user (manual)
+    const url = new URL(req.url);
+    const providedSecret = url.searchParams.get("secret");
+    const hasValidSecret = CRON_SECRET && providedSecret === CRON_SECRET;
+
+    if (!hasValidSecret) {
+      const user = await base44.auth.me().catch(() => null);
+      if (!user || user.role !== "admin") {
+        console.warn("checkBestSellerPrices: unauthorized call blocked");
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
 
     const bestSellers = await base44.asServiceRole.entities.BestSellerProduct.filter(
       { active: true }, "-imported_at", 200

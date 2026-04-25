@@ -16,7 +16,7 @@ const faqItems = [
   },
   {
     question: "Är Prisfall gratis för hundägare?",
-    answer: "Ja, Prisfall är helt gratis att använda. Du kan bevaka upp till 5 produkter utan kostnad, och med ett referral kan du utöka till fler.",
+    answer: "Ja, Prisfall är helt gratis att använda. Du kan bevaka upp till 10 produkter gratis, och med ett referral kan du utöka till fler.",
   },
 ];
 

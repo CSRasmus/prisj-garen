@@ -89,10 +89,12 @@ export default function OnboardingModal({ onClose }) {
           applicationServerKey: undefined,
         });
 
-      const { base44 } = await import("@/api/base44Client");
-      await base44.entities.PushSubscription.create({
-        subscription_json: JSON.stringify(subscription),
-      });
+      // TODO: Implementera push-subscription när PushSubscription-entitet är skapad
+      // const { base44 } = await import("@/api/base44Client");
+      // await base44.entities.PushSubscription.create({
+      //   subscription_json: JSON.stringify(subscription),
+      // });
+      void subscription;
     } catch (err) {
       console.error("Failed to save push subscription:", err);
     }

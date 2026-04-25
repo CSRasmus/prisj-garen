@@ -32,16 +32,22 @@ import { handleReferral } from '@/functions/handleReferral';
 // Capture referral code from URL and store in localStorage
 const params = new URLSearchParams(window.location.search);
 const refCode = params.get("ref");
-if (refCode) localStorage.setItem("prisjakare_ref", refCode);
+if (refCode) localStorage.setItem("prisfall_ref", refCode);
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
 
   React.useEffect(() => {
     if (!isAuthenticated) return;
-    const savedRef = localStorage.getItem("prisjakare_ref");
+    // Read new key first, fall back to legacy key during migration period (~30 days)
+    const savedRef = localStorage.getItem("prisfall_ref") || localStorage.getItem("prisjakare_ref");
     handleReferral({ referral_code: savedRef || null })
-      .then(() => { if (savedRef) localStorage.removeItem("prisjakare_ref"); })
+      .then(() => {
+        if (savedRef) {
+          localStorage.removeItem("prisfall_ref");
+          localStorage.removeItem("prisjakare_ref");
+        }
+      })
       .catch(() => {});
   }, [isAuthenticated]);
 

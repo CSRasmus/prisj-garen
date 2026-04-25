@@ -304,16 +304,18 @@ Skriv 400-600 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
   article3Response = article3Response.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
 
   const categoryLabel = { husdjur: "Husdjur", elektronik: "Elektronik", hem: "Hem", deals: "Deals" }[rotatedCategory];
+  const monthYear = now.toLocaleDateString("sv-SE", { month: "long", year: "numeric" });
+  const monthYearCapitalized = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
   const article3Slug = await checkAndAdjustSlug(base44, generateSlug(`${categoryLabel} prisrapport Amazon`));
   const article3Excerpt = `Månadsrapport om prisutvecklingen för ${rotatedCategory} på Amazon.se. Vilka produkter är billiga nu?`.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
   articles.push({
-    title: `${categoryLabel}-prisrapport: April 2026 – Prisdata från Amazon.se`,
+    title: `${categoryLabel}-prisrapport: ${monthYearCapitalized} – Prisdata från Amazon.se`,
     slug: article3Slug,
     content: article3Response + DISCLAIMER,
     excerpt: article3Excerpt,
     category: rotatedCategory,
     products_mentioned: categoryProducts.map(p => p.asin).join(","),
-    seo_title: `${categoryLabel} prisrapport April 2026 - Amazon.se | Prisfall`,
+    seo_title: `${categoryLabel} prisrapport ${monthYearCapitalized} - Amazon.se | Prisfall`,
     seo_description: `Månadsrapport: Prisdata för ${rotatedCategory} på Amazon.se. Se vilka produkter som är billiga just nu.`,
     featured_image_url: categoryProducts[0]?.image_url || null,
   });

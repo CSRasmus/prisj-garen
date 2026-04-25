@@ -18,8 +18,8 @@ export default function PartnerLanding() {
         const p = results[0];
         setPartner(p);
         // Store partner attribution in localStorage
-        localStorage.setItem("prisjakare_partner_id", p.id);
-        localStorage.setItem("prisjakare_partner_slug", p.slug);
+        localStorage.setItem("prisfall_partner_id", p.id);
+        localStorage.setItem("prisfall_partner_slug", p.slug);
         setLoading(false);
       })
       .catch(() => { setNotFound(true); setLoading(false); });

@@ -373,9 +373,9 @@ export default function LandingPage() {
             className="text-center"
           >
             <p className="text-sm text-muted-foreground font-medium">
-              <span className="text-foreground font-bold">10 000+</span> bevakade produkter&nbsp;•&nbsp;
-              <span className="text-foreground font-bold">500+</span> nöjda användare&nbsp;•&nbsp;
-              <span className="text-foreground font-bold">50 000+ kr</span> sparade
+              <span className="text-foreground font-bold">Bevaka alla Amazon-produkter</span>&nbsp;•&nbsp;
+              <span className="text-foreground font-bold">Helt gratis</span>&nbsp;•&nbsp;
+              <span className="text-foreground font-bold">Notis direkt vid prisfall</span>
             </p>
           </motion.div>
         </div>
@@ -461,8 +461,9 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex justify-center gap-6 flex-wrap">
-            <a href="/blogg" className="hover:text-foreground transition-colors">Blogg</a>
             <a href="/" className="hover:text-foreground transition-colors">Start</a>
+            <a href="/deals" className="hover:text-foreground transition-colors">🏆 Bästsäljare</a>
+            <a href="/blogg" className="hover:text-foreground transition-colors">Blogg</a>
             <a href="/integritetspolicy" className="hover:text-foreground transition-colors">Integritetspolicy</a>
             <a href="/villkor" className="hover:text-foreground transition-colors">Villkor</a>
           </div>
