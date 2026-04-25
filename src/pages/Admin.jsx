@@ -8,6 +8,7 @@ import { generateBlogPosts } from "@/functions/generateBlogPosts";
 import { adminImportHistories } from "@/functions/adminImportHistories";
 import { recalculateAllPrices } from "@/functions/recalculateAllPrices";
 import { refreshPricingOffers } from "@/functions/refreshPricingOffers";
+import WatchedAsinsList from "@/components/admin/WatchedAsinsList";
 
 export default function Admin() {
   const [user, setUser] = useState(null);
@@ -241,6 +242,11 @@ export default function Admin() {
               {checkResult.error ? `Fel: ${checkResult.error}` : `✅ ${checkResult.message || JSON.stringify(checkResult)}`}
             </div>
           )}
+        </Section>
+
+        {/* Watched ASINs */}
+        <Section title="👀 Bevakade ASINs">
+          <WatchedAsinsList />
         </Section>
 
         {/* Partner management */}
