@@ -7,6 +7,7 @@ import { checkPrices } from "@/functions/checkPrices";
 import { generateBlogPosts } from "@/functions/generateBlogPosts";
 import { adminImportHistories } from "@/functions/adminImportHistories";
 import { recalculateAllPrices } from "@/functions/recalculateAllPrices";
+import { cleanupHistoricalData } from "@/functions/cleanupHistoricalData";
 import WatchedAsinsList from "@/components/admin/WatchedAsinsList";
 
 export default function Admin() {
@@ -31,6 +32,10 @@ export default function Admin() {
   const [recalcRunning, setRecalcRunning] = useState(false);
   const [recalcResult, setRecalcResult] = useState(null);
   const [recalcLogs, setRecalcLogs] = useState([]);
+
+  const [cleanupRunning, setCleanupRunning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState(null);
+  const [cleanupLogs, setCleanupLogs] = useState([]);
 
   useEffect(() => {
     async function init() {
@@ -102,6 +107,22 @@ export default function Admin() {
       setHistoryResult({ error: err.message });
     }
     setHistoryRunning(false);
+  }
+
+  async function runCleanupHistorical() {
+    if (!confirm("Detta tar bort ALL marketplace veckosnitt-data (source='easyparser_historical') från GlobalPriceHistory och nollställer 90d-värden på alla produkter. Värdena byggs upp igen från live buy box-data. Fortsätt?")) return;
+    setCleanupRunning(true);
+    setCleanupResult(null);
+    setCleanupLogs([]);
+    try {
+      const res = await cleanupHistoricalData({});
+      setCleanupResult(res.data);
+      setCleanupLogs(res.data?.logs || []);
+      await loadStats();
+    } catch (err) {
+      setCleanupResult({ error: err.message });
+    }
+    setCleanupRunning(false);
   }
 
   async function runRecalculatePrices() {
@@ -260,6 +281,32 @@ export default function Admin() {
             <div className="mt-3 bg-muted rounded-lg p-3 max-h-64 overflow-y-auto">
               {historyLogs.map((log, i) => (
                 <p key={i} className="text-xs font-mono text-muted-foreground">{log}</p>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* Cleanup historical marketplace data */}
+        <Section title="🧹 Rensa marketplace-veckosnitt (multi-seller)">
+          <p className="text-sm text-muted-foreground mb-3">
+            Tar bort ALL <code>easyparser_historical</code>-data från <code>GlobalPriceHistory</code> (multi-seller veckosnitt — inte buy box) och nollställer <code>lowest_price_90d</code> / <code>highest_price_90d</code> på alla produkter. Värdena byggs upp igen från enbart live buy box-data via daglig priskoll. Påverkar inte produktbevakning.
+          </p>
+          <Button onClick={runCleanupHistorical} disabled={cleanupRunning} variant="destructive" className="gap-2">
+            {cleanupRunning ? <><Spinner /> Rensar...</> : "Rensa marketplace-data nu"}
+          </Button>
+
+          {cleanupResult && !cleanupRunning && (
+            <div className={`mt-3 text-sm px-4 py-3 rounded-lg ${cleanupResult.error ? "bg-destructive/10 text-destructive" : "bg-accent text-accent-foreground"}`}>
+              {cleanupResult.error
+                ? `Fel: ${cleanupResult.error}`
+                : `✅ Tog bort ${cleanupResult.deletedHistory} historiska rader, nollställde ${cleanupResult.productsReset}/${cleanupResult.totalProducts} produkter (${cleanupResult.historyFailed + cleanupResult.productsFailed} fel)`}
+            </div>
+          )}
+
+          {cleanupLogs.length > 0 && (
+            <div className="mt-3 bg-muted rounded-lg p-3 max-h-64 overflow-y-auto">
+              {cleanupLogs.map((log, i) => (
+                <p key={i} className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{log}</p>
               ))}
             </div>
           )}
