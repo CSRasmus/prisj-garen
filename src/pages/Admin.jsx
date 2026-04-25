@@ -7,6 +7,7 @@ import { checkPrices } from "@/functions/checkPrices";
 import { generateBlogPosts } from "@/functions/generateBlogPosts";
 import { adminImportHistories } from "@/functions/adminImportHistories";
 import { recalculateAllPrices } from "@/functions/recalculateAllPrices";
+import { refreshPricingOffers } from "@/functions/refreshPricingOffers";
 
 export default function Admin() {
   const [user, setUser] = useState(null);
@@ -30,6 +31,10 @@ export default function Admin() {
   const [recalcRunning, setRecalcRunning] = useState(false);
   const [recalcResult, setRecalcResult] = useState(null);
   const [recalcLogs, setRecalcLogs] = useState([]);
+
+  const [offersRunning, setOffersRunning] = useState(false);
+  const [offersResult, setOffersResult] = useState(null);
+  const [offersLogs, setOffersLogs] = useState([]);
 
   useEffect(() => {
     async function init() {
@@ -101,6 +106,21 @@ export default function Admin() {
       setHistoryResult({ error: err.message });
     }
     setHistoryRunning(false);
+  }
+
+  async function runRefreshOffers() {
+    setOffersRunning(true);
+    setOffersResult(null);
+    setOffersLogs([]);
+    try {
+      const res = await refreshPricingOffers({});
+      setOffersResult(res.data);
+      setOffersLogs(res.data?.logs || []);
+      await loadStats();
+    } catch (err) {
+      setOffersResult({ error: err.message });
+    }
+    setOffersRunning(false);
   }
 
   async function runRecalculatePrices() {
@@ -255,6 +275,32 @@ export default function Admin() {
             <div className="mt-3 bg-muted rounded-lg p-3 max-h-64 overflow-y-auto">
               {historyLogs.map((log, i) => (
                 <p key={i} className="text-xs font-mono text-muted-foreground">{log}</p>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* Refresh 90d range from Easyparser pricing.offers */}
+        <Section title="📈 Uppdatera 90d-värden från Easyparser">
+          <p className="text-sm text-muted-foreground mb-3">
+            Hämtar <code>pricing.offers.new_offer_min_price</code> / <code>new_offer_max_price</code> från Easyparser för varje unik ASIN och skriver in som <code>lowest_price_90d</code> / <code>highest_price_90d</code>. Mer pålitligt än att räkna från weekly <code>average_price</code>. Live-data från daglig priskoll skriver över dessa värden över tid. ~1.5 sek per ASIN, 1 credit per ASIN.
+          </p>
+          <Button onClick={runRefreshOffers} disabled={offersRunning} variant="outline" className="gap-2">
+            {offersRunning ? <><Spinner /> Uppdaterar...</> : "Uppdatera 90d-värden nu"}
+          </Button>
+
+          {offersResult && !offersRunning && (
+            <div className={`mt-3 text-sm px-4 py-3 rounded-lg ${offersResult.error ? "bg-destructive/10 text-destructive" : "bg-accent text-accent-foreground"}`}>
+              {offersResult.error
+                ? `Fel: ${offersResult.error}`
+                : `✅ ${offersResult.processed}/${offersResult.distinctAsins} ASINs bearbetade — ${offersResult.updated} produktrader uppdaterade, ${offersResult.failed} fel`}
+            </div>
+          )}
+
+          {offersLogs.length > 0 && (
+            <div className="mt-3 bg-muted rounded-lg p-3 max-h-80 overflow-y-auto">
+              {offersLogs.map((log, i) => (
+                <p key={i} className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{log}</p>
               ))}
             </div>
           )}

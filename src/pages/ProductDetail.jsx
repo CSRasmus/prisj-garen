@@ -232,7 +232,7 @@ export default function ProductDetail() {
               highestPrice={product.highest_price_90d}
             />
             <p className="text-[11px] text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 leading-snug">
-              📊 Äldre datapunkter visar Amazons veckosnitt över alla säljare — dagsfärska priser är från Amazons buybox.
+              📊 Prishistorik visar veckosnitt från Amazons marknadsplats. Dagliga buybox-mätningar startar nu — om ~14 dagar visar grafen exakta dagspriser.
             </p>
           </CardContent>
         </Card>

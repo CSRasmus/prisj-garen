@@ -192,39 +192,32 @@ Deno.serve(async (req) => {
       created += chunk.length;
     }
 
-    // Recompute 90d stats from the full GlobalPriceHistory (now including imported data)
-    // and update all Product rows tracking this ASIN.
+    // Prefer Easyparser's new_offer_min/max_price over computing from average_price history.
+    // average_price is a multi-seller weekly avg (skewed by 3rd-party sellers); new_offer_min/max
+    // is the actual seen min/max from new-offer sellers — closer to real buybox range.
+    // Live data from checkPrices/fetchProductPrice will overwrite these once we have 7+ live points.
     let productsUpdated = 0;
     try {
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+      const offers = data.result?.product?.pricing?.offers || {};
+      const newOfferMin = Number(offers.new_offer_min_price);
+      const newOfferMax = Number(offers.new_offer_max_price);
 
-      const allHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
-        { asin, amazon_domain: "amazon.se" }, "-checked_at", 1000
-      );
-      const recentPrices = allHistory
-        .filter(h => new Date(h.checked_at) >= ninetyDaysAgo)
-        .map(h => h.price)
-        .filter(p => p > 0);
-
-      if (recentPrices.length > 0) {
-        const lowest = Math.min(...recentPrices);
-        const highest = Math.max(...recentPrices);
-
+      if (newOfferMin > 0 && newOfferMax > 0) {
         const productsForAsin = await base44.asServiceRole.entities.Product.filter({ asin });
         for (const p of productsForAsin) {
-          const isLow = (p.current_price || 0) > 0 && p.current_price <= lowest * 1.05;
           await base44.asServiceRole.entities.Product.update(p.id, {
-            lowest_price_90d: lowest,
-            highest_price_90d: highest,
-            is_low_price: isLow,
+            lowest_price_90d: newOfferMin,
+            highest_price_90d: newOfferMax,
+            // is_low_price intentionally NOT set here — only live data should determine that
           });
           productsUpdated++;
         }
-        console.log(`Recomputed 90d for ${asin}: low=${lowest}, high=${highest}, products updated=${productsUpdated}`);
+        console.log(`Updated ${productsUpdated} product(s) for ${asin} from pricing.offers: min=${newOfferMin}, max=${newOfferMax}`);
+      } else {
+        console.log(`No new_offer_min/max_price for ${asin} — leaving 90d stats untouched`);
       }
     } catch (err) {
-      console.error(`Failed to recompute 90d stats for ${asin}: ${err.message}`);
+      console.error(`Failed to update 90d stats from pricing.offers for ${asin}: ${err.message}`);
     }
 
     return Response.json({
