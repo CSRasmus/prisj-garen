@@ -52,22 +52,24 @@ export default function AddProduct() {
     },
     onSuccess: async (created) => {
       try {
-        // 1. Check if we already have global history for this ASIN
-        let globalHistory = await base44.entities.GlobalPriceHistory.filter(
-          { asin: created.asin }, "-checked_at", 500
+        // 1. Check if we already have HISTORICAL data (not just live scrapes) for this ASIN
+        const historicalRows = await base44.entities.GlobalPriceHistory.filter(
+          { asin: created.asin, source: "easyparser_historical" }, "-checked_at", 1
         );
 
-        // 2. If no history yet, fetch 12-month history from Easyparser (waits ~600ms)
-        if (globalHistory.length === 0) {
+        // 2. If no historical data yet, fetch 12-month history from Easyparser
+        if (historicalRows.length === 0) {
           try {
             await fetchProductHistory({ asin: created.asin });
-            globalHistory = await base44.entities.GlobalPriceHistory.filter(
-              { asin: created.asin }, "-checked_at", 500
-            );
           } catch (_) {
             // continue with whatever we have
           }
         }
+
+        // 3. Now fetch all global history (live + historical) to seed PriceHistory
+        const globalHistory = await base44.entities.GlobalPriceHistory.filter(
+          { asin: created.asin }, "-checked_at", 500
+        );
 
         // 3. Seed PriceHistory from GlobalPriceHistory
         if (globalHistory.length > 0) {
