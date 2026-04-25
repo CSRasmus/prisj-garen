@@ -80,11 +80,13 @@ Deno.serve(async (req) => {
     // Save to user's PriceHistory
     await base44.entities.PriceHistory.create({ product_id, price, currency, checked_at: now });
 
-    // Compute 90d stats from all available global data for this ASIN
+    // Compute 90d stats — only data points from last 90 days
     const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
       { asin, amazon_domain: "amazon.se" }, "-checked_at", 500
     );
-    const allPrices = [...globalHistory.map(h => h.price), price].filter(p => p > 0);
+    const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const recent = globalHistory.filter(h => h.checked_at && h.checked_at >= cutoff90d);
+    const allPrices = [...recent.map(h => h.price), price].filter(p => p > 0);
     const lowestPrice = Math.min(...allPrices);
     const highestPrice = Math.max(...allPrices);
     const isLowPrice = price <= lowestPrice * 1.05;
