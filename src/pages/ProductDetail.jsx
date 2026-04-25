@@ -201,12 +201,12 @@ export default function ProductDetail() {
             highlight={status === "low"}
           />
           <StatCard
-            label="Lägst 365d"
+            label="Lägst 90d"
             value={formatPrice(product.lowest_price_90d, product.currency)}
             icon={TrendingDown}
           />
           <StatCard
-            label="Högst 365d"
+            label="Högst 90d"
             value={formatPrice(product.highest_price_90d, product.currency)}
             icon={TrendingUp}
           />
