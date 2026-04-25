@@ -1,15 +1,14 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Bell } from "lucide-react";
+import { ExternalLink, Bell, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatPrice } from "@/lib/affiliateUtils";
+import { useQuickWatch } from "@/lib/useQuickWatch";
 
 export default function BestSellerCard({ product, index = 0 }) {
-  const watchHref = product.asin
-    ? `/add?asin=${encodeURIComponent(product.asin)}`
-    : "/add";
+  const { watch, watchingAsin } = useQuickWatch();
+  const isWatching = watchingAsin === product.asin;
 
   return (
     <motion.div
@@ -55,11 +54,16 @@ export default function BestSellerCard({ product, index = 0 }) {
                 Köp på Amazon <ExternalLink className="w-3.5 h-3.5" />
               </Button>
             </a>
-            <Link to={watchHref} className="block">
-              <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs">
-                <Bell className="w-3 h-3" /> Bevaka prisfall
-              </Button>
-            </Link>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full gap-1.5 text-xs"
+              disabled={isWatching}
+              onClick={() => watch({ asin: product.asin, title: product.title, image_url: product.image_url })}
+            >
+              {isWatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />}
+              {isWatching ? "Lägger till..." : "Bevaka prisfall"}
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -4,11 +4,12 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Flame, Trophy, ExternalLink, Bell } from "lucide-react";
+import { ArrowLeft, Flame, Trophy, ExternalLink, Bell, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatPrice, buildAmazonUrl } from "@/lib/affiliateUtils";
 import BestSellerCard from "@/components/deals/BestSellerCard";
 import { weeklyDeals } from "@/functions/weeklyDeals";
+import { useQuickWatch } from "@/lib/useQuickWatch";
 
 const CATEGORIES = [
   { label: "Alla", slug: "all", emoji: "✨" },
@@ -160,7 +161,8 @@ export default function Deals() {
 }
 
 function VerifiedDealCard({ deal, index }) {
-  const watchHref = deal.asin ? `/add?asin=${encodeURIComponent(deal.asin)}` : "/add";
+  const { watch, watchingAsin } = useQuickWatch();
+  const isWatching = watchingAsin === deal.asin;
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -192,11 +194,16 @@ function VerifiedDealCard({ deal, index }) {
                   Köp <ExternalLink className="w-3 h-3" />
                 </Button>
               </a>
-              <Link to={watchHref}>
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs">
-                  <Bell className="w-3 h-3" /> Bevaka
-                </Button>
-              </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                disabled={isWatching}
+                onClick={() => watch({ asin: deal.asin, title: deal.title, image_url: deal.image_url })}
+              >
+                {isWatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />}
+                Bevaka
+              </Button>
             </div>
           </div>
         </CardContent>
