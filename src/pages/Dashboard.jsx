@@ -135,7 +135,7 @@ export default function Dashboard() {
         )}
       </motion.div>
 
-      <StatsWidget products={products} maxProducts={maxProducts} />
+      <StatsWidget products={products} maxProducts={maxProducts} historyByProduct={historyByProduct} />
 
       <DealsSection products={products} historyByProduct={historyLoading ? null : historyByProduct} />
 

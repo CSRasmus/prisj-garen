@@ -1,8 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { TrendingDown, Eye, Tag, Info } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import { formatPrice } from "@/lib/affiliateUtils";
 import {
   Tooltip,
@@ -11,42 +9,28 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export default function StatsWidget({ products, maxProducts = 10 }) {
+export default function StatsWidget({ products, maxProducts = 10, historyByProduct = {} }) {
   const totalWatched = products.length;
   const lowPriceItems = products.filter((p) => p.is_low_price);
   const lowPriceCount = lowPriceItems.length;
 
-  // Fetch price history for all low-price products to compute real averages
-  const lowPriceIds = lowPriceItems.map((p) => p.id);
-
-  const { data: allHistory = [] } = useQuery({
-    queryKey: ["priceHistory", "lowPriceItems", lowPriceIds.join(",")],
-    queryFn: async () => {
-      if (lowPriceIds.length === 0) return [];
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - 90);
-      const results = await Promise.all(
-        lowPriceIds.map((id) =>
-          base44.entities.PriceHistory.filter({ product_id: id }, "-checked_at", 500)
-        )
-      );
-      return results.flat().filter((h) => new Date(h.checked_at) >= cutoff);
-    },
-    enabled: lowPriceIds.length > 0,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // Build a map of product_id -> average price from history
+  // Build avg-by-product map from historyByProduct prop (no extra fetches — fixes N+1)
   const avgByProduct = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
     const map = {};
-    for (const id of lowPriceIds) {
-      const points = allHistory.filter((h) => h.product_id === id).map((h) => h.price);
+    for (const p of lowPriceItems) {
+      const history = historyByProduct[p.id] || [];
+      const points = history
+        .filter((h) => new Date(h.checked_at) >= cutoff)
+        .map((h) => h.price)
+        .filter((v) => v > 0);
       if (points.length > 0) {
-        map[id] = points.reduce((a, b) => a + b, 0) / points.length;
+        map[p.id] = points.reduce((a, b) => a + b, 0) / points.length;
       }
     }
     return map;
-  }, [allHistory, lowPriceIds]);
+  }, [lowPriceItems, historyByProduct]);
 
   // Savings = sum of (avgPrice - currentPrice) for each low-price product
   const totalSavings = useMemo(() => {
