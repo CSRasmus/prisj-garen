@@ -139,20 +139,27 @@ Deno.serve(async (req) => {
 
     const result = {
       imported: 0,
+      updated: 0,
+      deactivated: 0,
       skipped: 0,
       errors: 0,
       api_calls: 0,
       per_category: {},
     };
 
-    // Existing best-seller ASINs (skip dupes)
+    // Existing best-sellers — index by asin for fast lookup
     const existing = await base44.asServiceRole.entities.BestSellerProduct.list("-imported_at", 2000);
-    const existingAsins = new Set(existing.map(b => b.asin));
-    log(`Existing BestSellerProducts: ${existingAsins.size}`);
+    const existingByAsin = new Map(existing.map(b => [b.asin, b]));
+    log(`Existing BestSellerProducts: ${existingByAsin.size}`);
+
+    // Track ASINs that appear in this run, per category — used to deactivate stale ones
+    const seenAsinsByCategory = new Map();
 
     for (const cat of CATEGORIES) {
       log(`\n=== ${cat.emoji} ${cat.name} ===`);
-      const catStat = { fetched: 0, imported: 0, skipped: 0, errors: 0, source: null };
+      const catStat = { fetched: 0, imported: 0, updated: 0, deactivated: 0, skipped: 0, errors: 0, source: null };
+      const seenInThisRun = new Set();
+      seenAsinsByCategory.set(cat.slug, seenInThisRun);
 
       let items = [];
 
@@ -208,36 +215,51 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        if (existingAsins.has(asin)) {
-          log(`  [${i + 1}/${top.length}] ${asin} → skipped (already exists)`);
-          catStat.skipped++;
-          continue;
-        }
-
         if (!price || price < 1 || price > 100000) {
           log(`  [${i + 1}/${top.length}] ${asin} → skipped (invalid price: ${price})`);
           catStat.skipped++;
-          existingAsins.add(asin);
           continue;
         }
 
+        seenInThisRun.add(asin);
+
         try {
           const now = new Date().toISOString();
-          // Save BestSellerProduct
-          await base44.asServiceRole.entities.BestSellerProduct.create({
-            asin,
-            title,
-            image_url: image_url || null,
-            current_price: price,
-            currency: "SEK",
-            category: cat.name,
-            category_emoji: cat.emoji,
-            category_slug: cat.slug,
-            current_rank: i + 1,
-            source: catStat.source,
-            imported_at: now,
-            active: true,
-          });
+          const existingProduct = existingByAsin.get(asin);
+
+          if (existingProduct) {
+            // Update existing — refresh price, rank, activate
+            await base44.asServiceRole.entities.BestSellerProduct.update(existingProduct.id, {
+              current_price: price,
+              current_rank: i + 1,
+              category: cat.name,
+              category_emoji: cat.emoji,
+              category_slug: cat.slug,
+              imported_at: now,
+              active: true,
+              ...(image_url ? { image_url } : {}),
+            });
+            catStat.updated++;
+            log(`  [${i + 1}/${top.length}] 🔄 ${asin} — updated (rank ${i + 1}, ${price} SEK)`);
+          } else {
+            // New product
+            await base44.asServiceRole.entities.BestSellerProduct.create({
+              asin,
+              title,
+              image_url: image_url || null,
+              current_price: price,
+              currency: "SEK",
+              category: cat.name,
+              category_emoji: cat.emoji,
+              category_slug: cat.slug,
+              current_rank: i + 1,
+              source: catStat.source,
+              imported_at: now,
+              active: true,
+            });
+            catStat.imported++;
+            log(`  [${i + 1}/${top.length}] ✅ ${asin} — ${title.substring(0, 50)} (${price} SEK)`);
+          }
 
           // Seed GlobalPriceHistory with live price
           await base44.asServiceRole.entities.GlobalPriceHistory.create({
@@ -248,29 +270,43 @@ Deno.serve(async (req) => {
             amazon_domain: "amazon.se",
             source: "live",
           });
-
-          existingAsins.add(asin);
-          catStat.imported++;
-          log(`  [${i + 1}/${top.length}] ✅ ${asin} — ${title.substring(0, 50)} (${price} SEK)`);
         } catch (err) {
           log(`  [${i + 1}/${top.length}] ${asin} → ERROR: ${err.message}`);
           catStat.errors++;
         }
       }
 
+      // Deactivate stale products in this category that didn't appear in the new top list
+      for (const oldProd of existing) {
+        if (
+          oldProd.category_slug === cat.slug &&
+          oldProd.active &&
+          !seenInThisRun.has(oldProd.asin)
+        ) {
+          try {
+            await base44.asServiceRole.entities.BestSellerProduct.update(oldProd.id, { active: false });
+            catStat.deactivated++;
+          } catch (err) {
+            log(`  Deactivation failed for ${oldProd.asin}: ${err.message}`);
+          }
+        }
+      }
+
       result.imported += catStat.imported;
+      result.updated += catStat.updated;
+      result.deactivated += catStat.deactivated;
       result.skipped += catStat.skipped;
       result.errors += catStat.errors;
       result.per_category[cat.name] = catStat;
 
-      log(`  Subtotal: ${catStat.imported} imported, ${catStat.skipped} skipped, ${catStat.errors} errors (source: ${catStat.source})`);
+      log(`  Subtotal: ${catStat.imported} new, ${catStat.updated} updated, ${catStat.deactivated} deactivated, ${catStat.skipped} skipped, ${catStat.errors} errors (source: ${catStat.source})`);
 
       // Small pause between categories
       await new Promise(r => setTimeout(r, 1000));
     }
 
     log(`\n=== DONE ===`);
-    log(`Total: ${result.imported} imported, ${result.skipped} skipped, ${result.errors} errors`);
+    log(`Total: Imported ${result.imported} new, Updated ${result.updated} existing, Deactivated ${result.deactivated} products (${result.skipped} skipped, ${result.errors} errors)`);
     log(`API credits used: ~${result.api_calls}`);
 
     return Response.json({ success: true, ...result, logs });

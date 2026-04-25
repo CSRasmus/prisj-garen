@@ -27,7 +27,14 @@ export default function Deals() {
   const [activeCategory, setActiveCategory] = useState("all");
 
   useEffect(() => {
-    document.title = "Veckans deals — Prisfall";
+    document.title = "Populära produkter på Amazon.se | Prisfall";
+    const meta = document.querySelector('meta[name="description"]') || (() => {
+      const m = document.createElement("meta");
+      m.name = "description";
+      document.head.appendChild(m);
+      return m;
+    })();
+    meta.content = "De mest populära produkterna på Amazon.se just nu — bevaka priser och få notis vid prisfall";
   }, []);
 
   // Verified deals (real price drops on tracked products)
@@ -81,10 +88,13 @@ export default function Deals() {
       <main className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            🔥 Veckans deals
+            🏆 Populära produkter på Amazon.se
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            Verifierade prisfall på riktigt bevakade produkter och populära bästsäljare just nu.
+            Här ser du vad som säljs mest just nu inom olika kategorier. Klicka <strong>"Bevaka"</strong> för att få notis när priset sjunker — gratis.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Listan uppdateras varje måndag.
           </p>
         </motion.div>
 
@@ -111,7 +121,7 @@ export default function Deals() {
           <section className="mb-12">
             <div className="flex items-center gap-2 mb-4">
               <Flame className="w-5 h-5 text-destructive" />
-              <h2 className="text-xl font-bold">Verifierade prisfall</h2>
+              <h2 className="text-xl font-bold">🔥 Riktiga prisfall just nu</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredVerified.map((deal, i) => (
@@ -125,7 +135,7 @@ export default function Deals() {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Trophy className="w-5 h-5 text-amber-500" />
-            <h2 className="text-xl font-bold">Bästsäljare just nu</h2>
+            <h2 className="text-xl font-bold">🏆 Bästsäljare just nu</h2>
           </div>
 
           {loadingBest ? (
@@ -153,7 +163,7 @@ export default function Deals() {
         </section>
 
         {loadingDeals && filteredVerified.length === 0 && (
-          <p className="text-xs text-muted-foreground mt-6">Laddar verifierade deals…</p>
+          <p className="text-xs text-muted-foreground mt-6">Laddar prisfall…</p>
         )}
       </main>
     </div>
