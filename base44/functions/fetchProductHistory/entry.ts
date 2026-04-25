@@ -3,29 +3,51 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 
 // Extract history points from various possible shapes in Easyparser response.
-// The API is known to return arrays under `result.product.performance.*.history`
-// or `result.product.price_history`. We accept any structure that gives us
-// { date, price } pairs.
-function extractPriceHistory(data) {
+// Tries multiple known/guessed paths and logs which one matched (when debug=true).
+function extractPriceHistory(data, debug = false) {
   const result = data?.result;
   if (!result) return [];
 
-  const candidates = [];
-  const product = result.product || result;
+  const paths = [
+    ["product", "performance", "price", "history"],
+    ["product", "performance", "buybox", "history"],
+    ["product", "price_history"],
+    ["product", "history", "prices"],
+    ["product", "history", "price"],
+    ["sales_analysis_history"],
+    ["sales_analysis", "price_history"],
+    ["price", "history"],
+    ["history", "prices"],
+    ["history", "price"],
+    ["price_history"],
+    ["history"],
+  ];
 
-  // Common candidate paths — we collect and pick whichever is a non-empty array.
-  const push = (v) => { if (Array.isArray(v) && v.length) candidates.push(v); };
+  let arr = [];
+  let matchedPath = null;
+  for (const path of paths) {
+    let value = result;
+    for (const key of path) {
+      value = value?.[key];
+      if (value === undefined || value === null) break;
+    }
+    const isArr = Array.isArray(value);
+    if (debug) {
+      console.log(`[DEBUG] Path result.${path.join(".")}: ${isArr ? `Found ${value.length} items` : (value ? `not array (typeof=${typeof value})` : "null")}`);
+    }
+    if (isArr && value.length > 0) {
+      arr = value;
+      matchedPath = path.join(".");
+      break;
+    }
+  }
 
-  push(product?.performance?.price?.history);
-  push(product?.performance?.buybox?.history);
-  push(product?.price_history);
-  push(product?.history?.prices);
-  push(product?.history?.price);
-  push(result?.price_history);
-  push(result?.history?.price);
-  push(result?.sales_analysis?.price_history);
-
-  const arr = candidates[0] || [];
+  if (debug) {
+    console.log(`[DEBUG] Matched path: ${matchedPath || "NONE"}`);
+    if (arr.length > 0) {
+      console.log(`[DEBUG] Sample entry:`, JSON.stringify(arr[0]));
+    }
+  }
 
   const normalized = [];
   for (const entry of arr) {
@@ -87,44 +109,67 @@ Deno.serve(async (req) => {
 
     const data = await res.json();
 
-    // On first test / debug — log full response structure
+    // Detailed debug logging — chunked to avoid log truncation
     if (debug) {
-      console.log(`[DEBUG] Full response for ${asin}:`, JSON.stringify(data).substring(0, 5000));
+      console.log("[DEBUG] === Easyparser response structure ===");
+      console.log("[DEBUG] Top-level keys:", Object.keys(data).join(", "));
+      console.log("[DEBUG] request_info:", JSON.stringify(data.request_info));
+      console.log("[DEBUG] result keys:", data.result ? Object.keys(data.result).join(", ") : "null");
+
+      if (data.result) {
+        const resultStr = JSON.stringify(data.result);
+        console.log("[DEBUG] Result length:", resultStr.length);
+        for (let i = 0; i < Math.min(resultStr.length, 8000); i += 1000) {
+          console.log(`[DEBUG] Result ${i}-${i + 1000}:`, resultStr.substring(i, i + 1000));
+        }
+      }
+      console.log("[DEBUG] === End response structure ===");
     }
 
     const reqInfo = data.request_info || {};
     console.log(`Easyparser SALES_ANALYSIS_HISTORY for ${asin}: success=${reqInfo.success} status=${reqInfo.status_code} credits=${reqInfo.credits_used ?? 'n/a'} time=${elapsedMs}ms`);
 
-    if (!reqInfo.success || reqInfo.status_code === 404) {
+    // SALES_ANALYSIS_HISTORY does not return reqInfo.success — only status_code.
+    if (reqInfo.status_code !== 200 || !data.result) {
       return Response.json({
         success: false,
-        error: `Easyparser failure: ${JSON.stringify(reqInfo.error_details || reqInfo).substring(0, 200)}`,
+        error: `Easyparser failure: status_code=${reqInfo.status_code}, has_result=${!!data.result}, details=${JSON.stringify(reqInfo.error_details || reqInfo).substring(0, 200)}`,
         elapsedMs,
       }, { status: 500 });
     }
 
-    const history = extractPriceHistory(data);
+    const history = extractPriceHistory(data, debug);
     console.log(`Parsed ${history.length} history points for ${asin}`);
 
-    if (debug && history.length === 0) {
-      // Help diagnosing path mismatch
-      console.log(`[DEBUG] result keys: ${Object.keys(data.result || {}).join(", ")}`);
-      if (data.result?.product) {
-        console.log(`[DEBUG] product keys: ${Object.keys(data.result.product).join(", ")}`);
-        if (data.result.product.performance) {
-          console.log(`[DEBUG] performance keys: ${Object.keys(data.result.product.performance).join(", ")}`);
+    if (history.length === 0) {
+      // Return structural sample directly in response so we can see it
+      // (console.log gets truncated/dropped in Deno).
+      const sample = {};
+      if (data.result) {
+        sample.resultKeys = Object.keys(data.result);
+        if (data.result.history !== undefined) {
+          sample.historyType = Array.isArray(data.result.history) ? "array" : typeof data.result.history;
+          sample.historyKeys = (data.result.history && typeof data.result.history === "object" && !Array.isArray(data.result.history))
+            ? Object.keys(data.result.history) : null;
+          sample.historyPreview = JSON.stringify(data.result.history).substring(0, 2000);
+        }
+        if (data.result.product) {
+          sample.productKeys = Object.keys(data.result.product);
+          if (data.result.product.price_history) {
+            sample.productPriceHistoryPreview = JSON.stringify(data.result.product.price_history).substring(0, 1000);
+          }
+          if (data.result.product.performance) {
+            sample.productPerformanceKeys = Object.keys(data.result.product.performance);
+          }
         }
       }
-    }
-
-    if (history.length === 0) {
       return Response.json({
         success: true,
         historyCount: 0,
         note: "no history returned",
         elapsedMs,
         credits_used: reqInfo.credits_used ?? null,
-        sampleKeys: Object.keys(data.result || {}),
+        sample,
       });
     }
 
