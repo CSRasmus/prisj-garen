@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import OnboardingModal from "@/components/onboarding/OnboardingModal";
 
-const STORAGE_KEY = "prisjagaren_install_dismissed";
+const STORAGE_KEY = "prisfall_install_dismissed";
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isIOS() {
@@ -85,7 +85,7 @@ export default function InstallPrompt() {
 
             {/* Text */}
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm leading-tight">Installera PrisJägaren</p>
+              <p className="font-bold text-sm leading-tight">Installera Prisfall</p>
               {ios ? (
                 <p className="text-xs text-white/85 mt-1 leading-snug">
                   Tryck på{" "}

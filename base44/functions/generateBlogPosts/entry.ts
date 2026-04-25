@@ -329,6 +329,10 @@ Skriv 400-600 ord i HTML med <h1>, <h2>, <p>, <strong>-taggar.`;
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me().catch(() => null);
+    if (!user || user.role !== 'admin') {
+      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
     const result = await generateArticles(base44);
     return Response.json(result);
   } catch (error) {

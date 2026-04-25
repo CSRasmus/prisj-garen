@@ -9,13 +9,13 @@ Deno.serve(async (req) => {
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
 
     // Static pages
-    xml += '  <url>\n    <loc>https://app.prisjagaren.se/</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n';
-    xml += '  <url>\n    <loc>https://app.prisjagaren.se/blogg</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.8</priority>\n  </url>\n';
+    xml += '  <url>\n    <loc>https://prisfall.se/</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n';
+    xml += '  <url>\n    <loc>https://prisfall.se/blogg</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.8</priority>\n  </url>\n';
 
     // Blog posts
     posts.forEach(post => {
       xml += '  <url>\n';
-      xml += `    <loc>https://app.prisjagaren.se/blogg/${post.slug}</loc>\n`;
+      xml += `    <loc>https://prisfall.se/blogg/${post.slug}</loc>\n`;
       xml += `    <lastmod>${post.updated_date || post.created_date}</lastmod>\n`;
       xml += `    <changefreq>monthly</changefreq>\n`;
       xml += `    <priority>0.7</priority>\n`;

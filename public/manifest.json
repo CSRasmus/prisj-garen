@@ -1,21 +1,24 @@
 {
-  "name": "PrisJägaren",
-  "short_name": "PrisJägaren",
-  "description": "Bevaka priser på Amazon och få notis när priset är lågt",
+  "name": "Prisfall — Bevaka priser på Amazon.se",
+  "short_name": "Prisfall",
+  "description": "Bevaka priser på Amazon.se gratis och få notis när priset sjunker.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#16a34a",
-  "orientation": "portrait",
+  "lang": "sv-SE",
+  "categories": ["shopping", "lifestyle", "utilities"],
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "https://media.base44.com/images/public/69e0849cd5247ba1a2f9090f/ab8f118b8_generated_image.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "https://media.base44.com/images/public/69e0849cd5247ba1a2f9090f/ab8f118b8_generated_image.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
