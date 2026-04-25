@@ -35,32 +35,33 @@ export default function Dashboard() {
     enabled: !!currentUser?.email,
   });
 
-  // Bug 6: Hämta all PriceHistory i ett anrop istället för N anrop per ProductCard
+  // Hämta historik per produkt — först från GlobalPriceHistory (delad, inkl. easyparser_historical),
+  // fallback till användarens egen PriceHistory om global är tom
   const productIds = products.map(p => p.id);
-  const { data: allPriceHistory = [], isLoading: historyLoading } = useQuery({
+  const { data: historyByProduct = {}, isLoading: historyLoading } = useQuery({
     queryKey: ["priceHistory", productIds.join(",")],
     queryFn: async () => {
-      if (!productIds.length) return [];
+      if (!products.length) return {};
       const results = await Promise.all(
-        productIds.map(id =>
-          base44.entities.PriceHistory.filter({ product_id: id }, "-checked_at", 60)
-            .catch(() => [])
-        )
+        products.map(async (p) => {
+          let history = [];
+          if (p.asin) {
+            history = await base44.entities.GlobalPriceHistory
+              .filter({ asin: p.asin, amazon_domain: "amazon.se" }, "-checked_at", 365)
+              .catch(() => []);
+          }
+          if (!history.length) {
+            history = await base44.entities.PriceHistory
+              .filter({ product_id: p.id }, "-checked_at", 60)
+              .catch(() => []);
+          }
+          return [p.id, history];
+        })
       );
-      return results.flat();
+      return Object.fromEntries(results);
     },
-    enabled: productIds.length > 0,
+    enabled: products.length > 0,
   });
-
-  // Group history by product_id for easy lookup
-  const historyByProduct = React.useMemo(() => {
-    const map = {};
-    for (const h of allPriceHistory) {
-      if (!map[h.product_id]) map[h.product_id] = [];
-      map[h.product_id].push(h);
-    }
-    return map;
-  }, [allPriceHistory]);
 
   const deleteMutation = useMutation({
     mutationFn: (product) => base44.entities.Product.delete(product.id),
