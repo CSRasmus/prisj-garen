@@ -44,6 +44,16 @@ export default function BestSellerCard({ product, index = 0 }) {
                 🏆 Bästsäljare
               </span>
             </div>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+              <div className="flex items-start gap-2 text-xs">
+                <span className="text-base leading-none">📊</span>
+                <span className="text-gray-700 leading-snug">
+                  Bevaka för att se <strong>prishistorik</strong> och få <strong>notis vid prisfall</strong>
+                </span>
+              </div>
+            </div>
+
             <a
               href={product.amazon_url}
               target="_blank"
@@ -57,12 +67,17 @@ export default function BestSellerCard({ product, index = 0 }) {
             <Button
               size="sm"
               variant="outline"
-              className="w-full gap-1.5 text-xs"
+              className="w-full gap-1.5 text-xs bg-blue-50/50 border-blue-200 text-blue-900 hover:bg-blue-100 hover:text-blue-900 hover:border-blue-300"
               disabled={isWatching}
               onClick={() => watch({ asin: product.asin, title: product.title, image_url: product.image_url })}
             >
-              {isWatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />}
-              {isWatching ? "Lägger till..." : "Bevaka prisfall"}
+              {isWatching ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" /> Lägger till...
+                </>
+              ) : (
+                <>📊 Bevaka pris (gratis)</>
+              )}
             </Button>
           </div>
         </CardContent>
