@@ -173,15 +173,14 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    const users = await base44.asServiceRole.entities.User.filter(
-      { welcome_email_sent: false },
-      "-created_date",
-      50
-    );
+    // Fetch recent users and filter client-side because `welcome_email_sent`
+    // is undefined (not false) for users who never had the field set.
+    const recentUsers = await base44.asServiceRole.entities.User.list("-created_date", 100);
+    const users = (recentUsers || []).filter(u => u.welcome_email_sent !== true);
 
-    console.log(`sendWelcomeEmails: found ${users?.length ?? 0} users pending welcome email`);
+    console.log(`sendWelcomeEmails: found ${users.length} users pending welcome email (out of ${recentUsers?.length ?? 0} recent)`);
 
-    if (!users || users.length === 0) {
+    if (users.length === 0) {
       return Response.json({ sent: 0, message: "No pending users" });
     }
 
