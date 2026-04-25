@@ -150,26 +150,40 @@ export default function Admin() {
         )}
 
         {/* Import Best Sellers */}
-        <Section title="📦 Importera bästsäljare">
+        <Section title="📦 Importera bästsäljare (80 produkter)">
           <p className="text-sm text-muted-foreground mb-3">
-            Hämtar top-produkter från Husdjur, Elektronik och Hem &amp; kök via Easyparser BSR och sparar dem i GlobalPriceHistory.
+            Hämtar top 10 produkter från 8 kategorier via Easyparser (BEST_SELLERS med SEARCH-fallback). Sparar i <code>BestSellerProduct</code> + seedar live-pris i <code>GlobalPriceHistory</code>. Tar ~2-5 minuter. Kostar ~30-50 credits.
           </p>
           <Button onClick={runImportBestSellers} disabled={bsrRunning} className="gap-2">
-            {bsrRunning ? <><Spinner /> Importerar...</> : "Importera bästsäljare"}
+            {bsrRunning ? <><Spinner /> Importerar (kan ta 2-5 min)...</> : "Importera bästsäljare"}
           </Button>
 
           {bsrResult && !bsrRunning && (
             <div className={`mt-3 text-sm px-4 py-3 rounded-lg ${bsrResult.error ? "bg-destructive/10 text-destructive" : "bg-accent text-accent-foreground"}`}>
               {bsrResult.error
                 ? `Fel: ${bsrResult.error}`
-                : `✅ Klart: ${bsrResult.imported} importerade, ${bsrResult.skipped} hoppades över, ${bsrResult.errors} fel`}
+                : `✅ Klart: ${bsrResult.imported} importerade, ${bsrResult.skipped} hoppades över, ${bsrResult.errors} fel — ${bsrResult.api_calls} API-anrop`}
+            </div>
+          )}
+
+          {bsrResult?.per_category && !bsrRunning && (
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              {Object.entries(bsrResult.per_category).map(([cat, s]) => (
+                <div key={cat} className="bg-muted rounded-lg px-3 py-2">
+                  <p className="font-semibold">{cat}</p>
+                  <p className="text-muted-foreground">
+                    {s.imported} imp · {s.skipped} skip · {s.errors} err
+                    <span className="ml-1 opacity-60">({s.source})</span>
+                  </p>
+                </div>
+              ))}
             </div>
           )}
 
           {bsrLogs.length > 0 && (
-            <div className="mt-3 bg-muted rounded-lg p-3 max-h-64 overflow-y-auto">
+            <div className="mt-3 bg-muted rounded-lg p-3 max-h-80 overflow-y-auto">
               {bsrLogs.map((log, i) => (
-                <p key={i} className="text-xs font-mono text-muted-foreground">{log}</p>
+                <p key={i} className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{log}</p>
               ))}
             </div>
           )}

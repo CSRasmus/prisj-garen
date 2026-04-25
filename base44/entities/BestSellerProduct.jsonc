@@ -1,0 +1,73 @@
+{
+  "name": "BestSellerProduct",
+  "type": "object",
+  "properties": {
+    "asin": {
+      "type": "string",
+      "description": "Amazon ASIN \u2014 unique product key"
+    },
+    "title": {
+      "type": "string",
+      "description": "Product title"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Product image URL"
+    },
+    "current_price": {
+      "type": "number",
+      "description": "Latest fetched price in SEK"
+    },
+    "currency": {
+      "type": "string",
+      "default": "SEK"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Husdjur",
+        "Elektronik",
+        "Hem & k\u00f6k",
+        "Barnprodukter",
+        "Sport & fritid",
+        "B\u00f6cker",
+        "H\u00e4lsa",
+        "Tr\u00e4dg\u00e5rd"
+      ],
+      "description": "Category label"
+    },
+    "category_emoji": {
+      "type": "string",
+      "description": "Emoji for category"
+    },
+    "category_slug": {
+      "type": "string",
+      "description": "URL-friendly category slug"
+    },
+    "current_rank": {
+      "type": "number",
+      "description": "Rank within category at import time (1 = top)"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "best_sellers",
+        "search"
+      ],
+      "description": "How the product was discovered"
+    },
+    "imported_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "asin",
+    "title",
+    "category"
+  ]
+}
