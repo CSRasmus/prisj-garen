@@ -192,9 +192,45 @@ Deno.serve(async (req) => {
       created += chunk.length;
     }
 
+    // Recompute 90d stats from the full GlobalPriceHistory (now including imported data)
+    // and update all Product rows tracking this ASIN.
+    let productsUpdated = 0;
+    try {
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+      const allHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
+        { asin, amazon_domain: "amazon.se" }, "-checked_at", 1000
+      );
+      const recentPrices = allHistory
+        .filter(h => new Date(h.checked_at) >= ninetyDaysAgo)
+        .map(h => h.price)
+        .filter(p => p > 0);
+
+      if (recentPrices.length > 0) {
+        const lowest = Math.min(...recentPrices);
+        const highest = Math.max(...recentPrices);
+
+        const productsForAsin = await base44.asServiceRole.entities.Product.filter({ asin });
+        for (const p of productsForAsin) {
+          const isLow = (p.current_price || 0) > 0 && p.current_price <= lowest * 1.05;
+          await base44.asServiceRole.entities.Product.update(p.id, {
+            lowest_price_90d: lowest,
+            highest_price_90d: highest,
+            is_low_price: isLow,
+          });
+          productsUpdated++;
+        }
+        console.log(`Recomputed 90d for ${asin}: low=${lowest}, high=${highest}, products updated=${productsUpdated}`);
+      }
+    } catch (err) {
+      console.error(`Failed to recompute 90d stats for ${asin}: ${err.message}`);
+    }
+
     return Response.json({
       success: true,
       historyCount: created,
+      productsUpdated,
       elapsedMs,
       credits_used: reqInfo.credits_used ?? null,
     });

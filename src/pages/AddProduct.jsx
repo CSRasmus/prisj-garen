@@ -119,18 +119,13 @@ export default function AddProduct() {
               checked_at: point.checked_at,
             });
           }
-          // Compute stats from global history
-          const prices = globalHistory.map(h => h.price).filter(p => p > 0);
-          const lowestPrice = Math.min(...prices);
-          const highestPrice = Math.max(...prices);
+          // Only set current_price + last_checked here.
+          // 90d stats (lowest/highest/is_low_price) are computed by fetchProductHistory
+          // after the 12-month import completes — using the full dataset.
           const latestPrice = globalHistory[0]?.price;
-          const isLowPrice = latestPrice <= lowestPrice * 1.05;
           await base44.entities.Product.update(created.id, {
             current_price: latestPrice,
             currency: "SEK",
-            lowest_price_90d: lowestPrice,
-            highest_price_90d: highestPrice,
-            is_low_price: isLowPrice,
             last_checked: globalHistory[0]?.checked_at,
           });
         } else {
