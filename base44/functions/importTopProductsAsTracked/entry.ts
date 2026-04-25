@@ -2,16 +2,17 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 
-// Amazon.se main bestseller categories with verified node IDs
+// Categories with broad search queries — SEARCH returns ~50 results per page on Amazon.se.
+// To reach ~100 products per category we use 2 queries × 1 page each.
 const CATEGORIES = [
-  { name: "Husdjur", emoji: "🐶", category_id: "2454166031" },
-  { name: "Elektronik", emoji: "🔌", category_id: "2454155031" },
-  { name: "Hem & kök", emoji: "🏠", category_id: "2454158031" },
-  { name: "Barnprodukter", emoji: "👶", category_id: "2454152031" },
-  { name: "Sport & fritid", emoji: "🎮", category_id: "2454167031" },
-  { name: "Böcker", emoji: "📚", category_id: "2454153031" },
-  { name: "Hälsa", emoji: "🍎", category_id: "2454157031" },
-  { name: "Trädgård", emoji: "🌱", category_id: "2454168031" },
+  { name: "Husdjur",        emoji: "🐶", queries: ["hund", "katt"] },
+  { name: "Elektronik",     emoji: "🔌", queries: ["hörlurar", "smartwatch"] },
+  { name: "Hem & kök",      emoji: "🏠", queries: ["kaffemaskin", "köksmaskin"] },
+  { name: "Barnprodukter",  emoji: "👶", queries: ["barn leksak", "blöjor"] },
+  { name: "Sport & fritid", emoji: "🎮", queries: ["träning", "cykel"] },
+  { name: "Böcker",         emoji: "📚", queries: ["bok bestseller", "deckare"] },
+  { name: "Hälsa",          emoji: "🍎", queries: ["vitamin", "kosttillskott"] },
+  { name: "Trädgård",       emoji: "🌱", queries: ["trädgård", "grill"] },
 ];
 
 const PRODUCTS_PER_CATEGORY = 100;
@@ -19,25 +20,26 @@ const PRODUCTS_PER_CATEGORY = 100;
 async function easyparserRequest(params) {
   const url = `https://realtime.easyparser.com/v1/request?${new URLSearchParams(params)}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
+  const text = await res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.substring(0, 200)}`);
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error(`Bad JSON: ${text.substring(0, 200)}`); }
   if (!data.request_info?.success) {
     throw new Error(`API error: ${JSON.stringify(data.request_info).substring(0, 200)}`);
   }
   return data;
 }
 
-async function fetchBestSellers(category_id, page = 1) {
+async function fetchSearch(keyword) {
   const data = await easyparserRequest({
     api_key: EASYPARSER_API_KEY,
     platform: "AMZ",
     domain: ".se",
-    operation: "BEST_SELLERS",
-    category_id,
-    page: String(page),
+    operation: "SEARCH",
+    keyword,
     output: "json",
   });
-  return data.result?.best_sellers || data.result?.bestsellers || [];
+  return data.result?.search_results || data.result?.results || [];
 }
 
 function buildImageUrl(raw) {
@@ -54,7 +56,7 @@ function parsePrice(raw) {
 function extractItem(item) {
   const asin = item.asin || item.ASIN;
   const title = item.title || item.name;
-  const image_url = buildImageUrl(item.image || item.image_url || item.main_image?.link);
+  const image_url = buildImageUrl(item.image || item.image_url || item.thumbnail || item.main_image?.link);
   const priceRaw = item.price?.value ?? item.price?.raw ?? item.price ?? item.buybox_winner?.price?.value ?? null;
   return { asin, title, image_url, price: parsePrice(priceRaw) };
 }
@@ -91,91 +93,88 @@ Deno.serve(async (req) => {
       log(`\n=== ${cat.emoji} ${cat.name} ===`);
       const catStat = { fetched: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
 
-      // BEST_SELLERS returns ~50 per page → fetch 2 pages for top 100
-      let items = [];
-      for (let page = 1; page <= 2 && items.length < PRODUCTS_PER_CATEGORY; page++) {
-        try {
-          log(`  BEST_SELLERS page ${page}...`);
-          result.api_calls++;
-          const r = await fetchBestSellers(cat.category_id, page);
-          log(`  → page ${page} returned ${r.length} items`);
-          items = items.concat(r);
-          await new Promise(r => setTimeout(r, 800));
-        } catch (err) {
-          log(`  → page ${page} failed: ${err.message}`);
-          catStat.errors++;
-        }
-      }
-
-      // Dedupe by ASIN within this category
+      // Combine search results across this category's queries, dedupe by ASIN
       const seen = new Set();
-      const top = [];
-      for (const it of items) {
-        const asin = it.asin || it.ASIN;
-        if (asin && !seen.has(asin)) {
-          seen.add(asin);
-          top.push(it);
-          if (top.length >= PRODUCTS_PER_CATEGORY) break;
-        }
-      }
-      catStat.fetched = top.length;
-      log(`  → Top ${top.length} unique ASINs`);
-
-      for (let i = 0; i < top.length; i++) {
-        const { asin, title, image_url, price } = extractItem(top[i]);
-
-        if (!asin || !title) {
-          catStat.skipped++;
-          continue;
-        }
-
-        if (!price || price < 1 || price > 100000) {
-          catStat.skipped++;
-          continue;
-        }
-
+      const items = [];
+      for (const q of cat.queries) {
+        if (items.length >= PRODUCTS_PER_CATEGORY) break;
         try {
-          const now = new Date().toISOString();
-          const existing = existingByAsin.get(asin);
-
-          if (existing) {
-            // Already tracked — just refresh price/title/image
-            await base44.asServiceRole.entities.Product.update(existing.id, {
-              title,
-              current_price: price,
-              last_checked: now,
-              ...(image_url ? { image_url } : {}),
-            });
-            catStat.updated++;
-          } else {
-            // Create as a tracked product (checkPrices will pick it up automatically)
-            const created = await base44.asServiceRole.entities.Product.create({
-              title,
-              asin,
-              image_url: image_url || null,
-              amazon_url: `https://www.amazon.se/dp/${asin}`,
-              current_price: price,
-              currency: "SEK",
-              notify_on_drop: false, // Admin-imported — no email notifications
-              last_checked: now,
-            });
-            existingByAsin.set(asin, created);
-            catStat.created++;
+          log(`  SEARCH "${q}"...`);
+          result.api_calls++;
+          const r = await fetchSearch(q);
+          log(`  → "${q}" returned ${r.length} items`);
+          for (const it of r) {
+            const asin = it.asin || it.ASIN;
+            if (asin && !seen.has(asin)) {
+              seen.add(asin);
+              items.push(it);
+              if (items.length >= PRODUCTS_PER_CATEGORY) break;
+            }
           }
-
-          // Seed live datapoint for the buy-box price
-          await base44.asServiceRole.entities.GlobalPriceHistory.create({
-            asin,
-            price,
-            currency: "SEK",
-            checked_at: now,
-            amazon_domain: "amazon.se",
-            source: "live",
-          });
         } catch (err) {
-          log(`  [${i + 1}] ${asin} → ERROR: ${err.message}`);
+          log(`    → SEARCH "${q}" failed: ${err.message}`);
           catStat.errors++;
         }
+        await new Promise(r => setTimeout(r, 800));
+      }
+
+      catStat.fetched = items.length;
+      log(`  → Top ${items.length} unique ASINs`);
+
+      // Build new products in bulk to reduce per-row overhead and avoid SDK rate limits
+      const now = new Date().toISOString();
+      const toCreate = [];
+      const historyRows = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const { asin, title, image_url, price } = extractItem(items[i]);
+
+        if (!asin || !title) { catStat.skipped++; continue; }
+        if (!price || price < 1 || price > 100000) { catStat.skipped++; continue; }
+
+        const existing = existingByAsin.get(asin);
+        if (existing) {
+          // Skip — already tracked. Daily checkPrices will refresh price.
+          catStat.skipped++;
+          continue;
+        }
+
+        toCreate.push({
+          title,
+          asin,
+          image_url: image_url || null,
+          amazon_url: `https://www.amazon.se/dp/${asin}`,
+          current_price: price,
+          currency: "SEK",
+          notify_on_drop: false,
+          last_checked: now,
+        });
+        historyRows.push({
+          asin, price, currency: "SEK", checked_at: now,
+          amazon_domain: "amazon.se", source: "live",
+        });
+        existingByAsin.set(asin, { asin }); // mark as seen
+      }
+
+      // Bulk create in chunks of 25 with small pauses to stay under rate limits
+      const CHUNK = 25;
+      for (let i = 0; i < toCreate.length; i += CHUNK) {
+        try {
+          await base44.asServiceRole.entities.Product.bulkCreate(toCreate.slice(i, i + CHUNK));
+          catStat.created += Math.min(CHUNK, toCreate.length - i);
+        } catch (err) {
+          log(`  Product.bulkCreate chunk ${i} failed: ${err.message}`);
+          catStat.errors += Math.min(CHUNK, toCreate.length - i);
+        }
+        await new Promise(r => setTimeout(r, 600));
+      }
+      for (let i = 0; i < historyRows.length; i += CHUNK) {
+        try {
+          await base44.asServiceRole.entities.GlobalPriceHistory.bulkCreate(historyRows.slice(i, i + CHUNK));
+        } catch (err) {
+          log(`  GlobalPriceHistory.bulkCreate chunk ${i} failed: ${err.message}`);
+        }
+        await new Promise(r => setTimeout(r, 600));
       }
 
       result.created += catStat.created;
