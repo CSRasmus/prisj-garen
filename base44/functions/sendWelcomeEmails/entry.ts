@@ -13,10 +13,9 @@ function buildWelcomeEmailHtml(userName) {
     <tr><td align="center">
       <table width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
         <tr>
-          <td style="background:linear-gradient(135deg,#16a34a,#22c55e);padding:36px 32px;text-align:center;">
-            <div style="font-size:40px;margin-bottom:8px;">🏷️</div>
-            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:800;letter-spacing:-0.5px;">Prisfall</h1>
-            <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:14px;">Prisbevakning för Amazon.se</p>
+          <td style="background:#ffffff;padding:32px 32px 16px;text-align:center;border-bottom:1px solid #f3f4f6;">
+            <img src="https://media.base44.com/images/public/69e0849cd5247ba1a2f9090f/ab8f118b8_generated_image.png" width="80" height="80" alt="Prisfall" style="display:inline-block;border-radius:12px;"/>
+            <p style="color:#6b7280;margin:8px 0 0;font-size:13px;">Prisbevakning för Amazon.se</p>
           </td>
         </tr>
         <tr>
@@ -71,7 +70,8 @@ function buildWelcomeEmailHtml(userName) {
         </tr>
         <tr>
           <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 32px;text-align:center;">
-            <p style="color:#9ca3af;font-size:12px;margin:0;line-height:1.6;">📉 Prisfall — Helt gratis, alltid.</p>
+            <p style="color:#9ca3af;font-size:12px;margin:0 0 4px;line-height:1.6;">📉 Prisfall — Helt gratis, alltid.</p>
+            <p style="color:#d1d5db;font-size:11px;margin:0;">Du får detta från Prisfall (prisfall.se)</p>
           </td>
         </tr>
       </table>

@@ -116,6 +116,8 @@ function buildProductRow(product, result) {
     </div>`;
 }
 
+const LOGO_URL = "https://media.base44.com/images/public/69e0849cd5247ba1a2f9090f/ab8f118b8_generated_image.png";
+
 async function sendSummaryEmail(base44, userEmail, qualifiedProducts, totalWatched) {
   const count = qualifiedProducts.length;
   const subject = count === 1
@@ -124,32 +126,55 @@ async function sendSummaryEmail(base44, userEmail, qualifiedProducts, totalWatch
 
   const productRows = qualifiedProducts.map(({ product, result }) => buildProductRow(product, result)).join("");
 
-  const shareText = encodeURIComponent(`🔥 Prisfall på Amazon!\n\nHitta fler deals: https://prisfall.se`);
-  const whatsappUrl = `https://wa.me/?text=${shareText}`;
+  const siteUrl = "https://prisfall.se";
+  const shareText = `Kolla in dessa prisfall på Amazon.se via Prisfall: ${siteUrl}`;
+  const mailtoUrl = `mailto:?subject=${encodeURIComponent("Kolla in dessa prisfall!")}&body=${encodeURIComponent(shareText)}`;
+  const smsUrl = `sms:?&body=${encodeURIComponent(shareText)}`;
+  const messengerUrl = `https://www.facebook.com/dialog/send?app_id=140586622674265&link=${encodeURIComponent(siteUrl)}&redirect_uri=${encodeURIComponent(siteUrl)}`;
+  const copyUrl = `${siteUrl}?utm_source=email&utm_medium=share`;
+
+  const shareBtn = (href, label) => `<a href="${href}" style="display:inline-block;background:#f3f4f6;color:#111827;padding:12px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;margin:4px;min-width:120px;text-align:center;line-height:1.2">${label}</a>`;
 
   const body = `
-    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#222;background:#f9fafb;padding:24px;border-radius:16px">
-      <div style="text-align:center;margin-bottom:24px">
-        <h1 style="color:#16a34a;font-size:1.6em;margin:0">🔥 Prisfall</h1>
-        <p style="color:#6b7280;margin:4px 0 0">Din prisbevakning för Amazon.se</p>
-      </div>
+<!DOCTYPE html>
+<html lang="sv"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#f4f7f6;font-family:'Helvetica Neue',Arial,sans-serif;color:#222">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f6;padding:24px 12px">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07)">
+        <tr><td style="padding:28px 24px 8px;text-align:center">
+          <img src="${LOGO_URL}" width="80" height="80" alt="Prisfall" style="display:inline-block;border-radius:12px;background:#fff"/>
+          <p style="color:#6b7280;margin:8px 0 0;font-size:13px">Prisbevakning för Amazon.se</p>
+        </td></tr>
 
-      <div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;border:1px solid #e5e7eb">
-        <h2 style="margin:0 0 16px;font-size:1.2em">${subject.replace(/^🔥 /, '')}</h2>
-        ${productRows}
-      </div>
+        <tr><td style="padding:8px 24px 0">
+          <h2 style="margin:8px 0 16px;font-size:1.2em;color:#111827">${subject.replace(/^🔥 /, '')}</h2>
+          ${productRows}
+        </td></tr>
 
-      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid #e5e7eb;text-align:center">
-        <p style="margin:0 0 12px;font-size:14px;color:#555;font-weight:600">📣 Dela dessa deals med en vän</p>
-        <a href="${whatsappUrl}" style="background:#25D366;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:13px">WhatsApp</a>
-      </div>
+        <tr><td style="padding:16px 24px 8px">
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:20px;text-align:center">
+            <p style="margin:0 0 12px;font-size:14px;color:#374151;font-weight:600">📣 Dela dessa deals med en vän</p>
+            <div>
+              ${shareBtn(copyUrl, "📋 Kopiera länk")}
+              ${shareBtn(mailtoUrl, "✉️ E-post")}
+              ${shareBtn(smsUrl, "💬 SMS")}
+              ${shareBtn(messengerUrl, "📱 Messenger")}
+            </div>
+          </div>
+        </td></tr>
 
-      <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px">
-        Du bevakar ${totalWatched} produkt${totalWatched !== 1 ? 'er' : ''} totalt på Prisfall<br/>
-        <a href="https://prisfall.se/dashboard" style="color:#16a34a;text-decoration:none">Hantera dina bevakningar →</a>
-      </p>
-      <p style="text-align:center;color:#d1d5db;font-size:11px;margin-top:8px">Prisfall — prisfall.se</p>
-    </div>`;
+        <tr><td style="padding:16px 24px 28px;text-align:center">
+          <p style="color:#6b7280;font-size:13px;margin:0 0 6px">
+            Du bevakar ${totalWatched} produkt${totalWatched !== 1 ? 'er' : ''} på Prisfall.se
+          </p>
+          <a href="${siteUrl}/dashboard" style="color:#16a34a;text-decoration:none;font-weight:600;font-size:13px">Logga in på Prisfall.se →</a>
+          <p style="color:#d1d5db;font-size:11px;margin:16px 0 0">Du får detta från Prisfall (prisfall.se)</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
 
   await base44.asServiceRole.integrations.Core.SendEmail({
     to: userEmail,
