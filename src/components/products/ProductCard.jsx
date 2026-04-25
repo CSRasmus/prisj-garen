@@ -127,11 +127,6 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
                   {product.title}
                 </h3>
               </Link>
-              {state === "watching" && (
-                <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground whitespace-nowrap">
-                  ⏳ Hämtar prishistorik...
-                </span>
-              )}
               {state === "low" && (
                 <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200 whitespace-nowrap">
                   🔥 Lägsta priset på länge!
