@@ -63,7 +63,8 @@ export async function computeWeeklyDeals(base44, opts = {}) {
     if (!medianPrice || medianPrice <= 0) { stats.no_median++; continue; }
 
     const dropPercent = ((medianPrice - product.current_price) / medianPrice) * 100;
-    if (dropPercent < 10) { stats.drop_too_small++; continue; }
+    // TODO: Höj tillbaka till 10% när databasen har 100+ produkter
+    if (dropPercent < 5) { stats.drop_too_small++; continue; }
     stats.qualified++;
 
     // Determine badge: lowest in N months?
