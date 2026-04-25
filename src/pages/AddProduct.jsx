@@ -21,6 +21,9 @@ export default function AddProduct() {
   const [addingAsin, setAddingAsin] = useState(null);
 
   const [currentUser, setCurrentUser] = React.useState(null);
+  const prefillAsin = React.useMemo(() => {
+    return new URLSearchParams(window.location.search).get("asin") || "";
+  }, []);
   React.useEffect(() => {
     document.title = "Lägg till produkt — Prisfall";
     base44.auth.me().then(setCurrentUser).catch(() => {});
@@ -172,6 +175,7 @@ export default function AddProduct() {
                   onAdd={handleAdd}
                   disabled={atLimit}
                   isAdding={addMutation.isPending}
+                  prefillAsin={prefillAsin}
                 />
               </CardContent>
             </Card>

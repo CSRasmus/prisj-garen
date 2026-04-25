@@ -20,8 +20,8 @@ function extractASIN(input) {
   return null;
 }
 
-export default function LinkTab({ existingAsins = [], onAdd, disabled, isAdding }) {
-  const [url, setUrl] = useState("");
+export default function LinkTab({ existingAsins = [], onAdd, disabled, isAdding, prefillAsin = "" }) {
+  const [url, setUrl] = useState(prefillAsin || "");
   const [title, setTitle] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [asin, setAsin] = useState(null);
@@ -62,6 +62,16 @@ export default function LinkTab({ existingAsins = [], onAdd, disabled, isAdding 
     setAsin(null);
     lookupMutation.mutate(url);
   };
+
+  // Auto-lookup on mount if prefilled with an ASIN
+  const didAutoLookup = React.useRef(false);
+  React.useEffect(() => {
+    if (prefillAsin && !didAutoLookup.current) {
+      didAutoLookup.current = true;
+      lookupMutation.mutate(prefillAsin);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillAsin]);
 
   const handleAdd = () => {
     onAdd({ asin, title, image_url: imageUrl });

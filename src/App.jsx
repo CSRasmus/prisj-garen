@@ -15,7 +15,7 @@ import AddProduct from '@/pages/AddProduct';
 import ProductDetail from '@/pages/ProductDetail';
 import Blog from '@/pages/Blog';
 import BlogPost from '@/pages/BlogPost';
-import Deals from '@/pages/Deals';
+import Deals from '@/pages/Deals.jsx';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
 import Admin from '@/pages/Admin';

@@ -121,13 +121,42 @@ export async function computeWeeklyDeals(base44, opts = {}) {
   }
 
   // Strip internal field
-  const result = picked.map(({ _datapoints, ...rest }) => ({
+  const verifiedDeals = picked.map(({ _datapoints, ...rest }) => ({
     ...rest,
     category: rest.category.label,
     category_emoji: rest.category.emoji,
+    type: "verified",
   }));
-  if (opts.withStats) return { deals: result, stats };
-  return result;
+
+  // Always fetch best sellers as a complement / fallback
+  const bestSellers = await base44.asServiceRole.entities.BestSellerProduct.filter(
+    { active: true }, "current_rank", 100
+  );
+  const verifiedAsins = new Set(verifiedDeals.map(d => d.asin));
+  const bestSellerDeals = bestSellers
+    .filter(b => !verifiedAsins.has(b.asin) && b.current_price > 0)
+    .map(b => ({
+      asin: b.asin,
+      title: b.title,
+      image_url: b.image_url,
+      current_price: Math.round(b.current_price),
+      median_price: null,
+      price_drop_kr: null,
+      price_drop_percent: null,
+      amazon_url: buildAmazonUrl(b.asin),
+      category: b.category,
+      category_emoji: b.category_emoji,
+      category_slug: b.category_slug,
+      current_rank: b.current_rank,
+      badge: "🏆 Bästsäljare",
+      type: "bestseller",
+    }));
+
+  // Mix: up to 5 verified + fill to 10 with bestsellers
+  const combined = [...verifiedDeals.slice(0, 5), ...bestSellerDeals.slice(0, 5)];
+
+  if (opts.withStats) return { deals: combined, verified: verifiedDeals, bestSellers: bestSellerDeals, stats };
+  return combined;
 }
 
 Deno.serve(async (req) => {

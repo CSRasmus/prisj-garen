@@ -4,6 +4,16 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { TrendingDown, Bell, ShieldCheck, Star, ChevronDown, ChevronUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import NicheBestSellers from "@/components/niche/NicheBestSellers";
+
+// Map niche slug → BestSellerProduct.category
+const NICHE_TO_CATEGORY = {
+  hund: "Husdjur",
+  katt: "Husdjur",
+  barn: "Barnprodukter",
+  elektronik: "Elektronik",
+  hem: "Hem & kök",
+};
 
 const niches = [
   { slug: "hund", label: "🐶 Hund" },
@@ -187,43 +197,14 @@ export default function NicheLandingPage({
         </div>
       </section>
 
-      {/* Example Products */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="max-w-4xl mx-auto space-y-10">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <h2 className="text-2xl sm:text-3xl font-extrabold">Populärt att bevaka</h2>
-            <p className="text-muted-foreground mt-2">Exempel på produkter andra bevakar i den här kategorin</p>
-          </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {exampleProducts.slice(0, 3).map((product, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="bg-card border border-border rounded-xl p-5 space-y-3 text-center hover:shadow-md transition-shadow"
-              >
-                <div className="text-4xl">{emoji}</div>
-                <p className="font-semibold text-foreground">{product}</p>
-                <div className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full">
-                  <Bell className="w-3 h-3" /> Prisbevakning
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          <div className="text-center">
-            <Button onClick={handleSignup} variant="outline" size="lg" className="h-12 px-8 font-semibold">
-              Bevaka dina produkter →
-            </Button>
-          </div>
-        </div>
-      </section>
+      {/* Real best sellers from database */}
+      {NICHE_TO_CATEGORY[niche] && (
+        <NicheBestSellers
+          category={NICHE_TO_CATEGORY[niche]}
+          title="Populärt just nu"
+          limit={6}
+        />
+      )}
 
       {/* How it works */}
       <section className="py-16 px-4">
