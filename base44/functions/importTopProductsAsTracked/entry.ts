@@ -2,16 +2,21 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 
-// Same 8 Amazon.se categories as importBestSellers
+// All 12 main bestseller categories on Amazon.se
+// Using URL slugs (Easyparser accepts both node IDs and slugs via category_url)
 const CATEGORIES = [
-  { name: "Husdjur", emoji: "🐶", category_id: "2454166031" },
-  { name: "Elektronik", emoji: "🔌", category_id: "2454155031" },
-  { name: "Hem & kök", emoji: "🏠", category_id: "2454158031" },
-  { name: "Barnprodukter", emoji: "👶", category_id: "2454152031" },
-  { name: "Sport & fritid", emoji: "🎮", category_id: "2454167031" },
-  { name: "Böcker", emoji: "📚", category_id: "2454153031" },
-  { name: "Hälsa", emoji: "🍎", category_id: "2454157031" },
-  { name: "Trädgård", emoji: "🌱", category_id: "2454168031" },
+  { name: "Böcker", emoji: "📚", slug: "books" },
+  { name: "Elektronik, datorer & kontor", emoji: "🔌", slug: "electronics" },
+  { name: "Hem, kök, trädgård & husdjur", emoji: "🏠", slug: "kitchen" },
+  { name: "Bygg, el & verktyg", emoji: "🔧", slug: "home-improvement" },
+  { name: "Baby, leksaker, spel & hobby", emoji: "👶", slug: "toys" },
+  { name: "Kläder, skor, smycken & accessoarer", emoji: "👕", slug: "fashion" },
+  { name: "Sport & outdoor", emoji: "🎮", slug: "sports" },
+  { name: "Skönhet, hälsa & hushåll", emoji: "💄", slug: "beauty" },
+  { name: "Livsmedel", emoji: "🍎", slug: "grocery" },
+  { name: "Filmer, TV & musik", emoji: "🎬", slug: "dvd" },
+  { name: "TV-spel & konsoler", emoji: "🎮", slug: "videogames" },
+  { name: "Fordon & industriella verktyg", emoji: "🚗", slug: "automotive" },
 ];
 
 const PRODUCTS_PER_CATEGORY = 100;
@@ -27,13 +32,13 @@ async function easyparserRequest(params) {
   return data;
 }
 
-async function fetchBestSellers(category_id, page = 1) {
+async function fetchBestSellers(slug, page = 1) {
   const data = await easyparserRequest({
     api_key: EASYPARSER_API_KEY,
     platform: "AMZ",
     domain: ".se",
     operation: "BEST_SELLERS",
-    category_id,
+    category_url: `https://www.amazon.se/gp/bestsellers/${slug}/`,
     page: String(page),
     output: "json",
   });
@@ -97,7 +102,7 @@ Deno.serve(async (req) => {
         try {
           log(`  BEST_SELLERS page ${page}...`);
           result.api_calls++;
-          const r = await fetchBestSellers(cat.category_id, page);
+          const r = await fetchBestSellers(cat.slug, page);
           log(`  → page ${page} returned ${r.length} items`);
           items = items.concat(r);
           await new Promise(r => setTimeout(r, 800));

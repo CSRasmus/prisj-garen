@@ -144,7 +144,7 @@ export default function Admin() {
   }
 
   async function runImportTopProducts() {
-    if (!confirm("Detta skapar upp till 800 nya produkter (100 per kategori × 8 kategorier) som spåras automatiskt. Det kostar ~16 Easyparser-credits och tar några minuter. Fortsätt?")) return;
+    if (!confirm("Detta skapar upp till 1 200 nya produkter (100 per kategori × 12 kategorier) som spåras automatiskt. Det kostar ~24 Easyparser-credits och tar några minuter. Fortsätt?")) return;
     setTopRunning(true);
     setTopResult(null);
     setTopLogs([]);
@@ -253,7 +253,7 @@ export default function Admin() {
         {/* Import top 100 per category as tracked Products */}
         <Section title="🚀 Importera top 100 per kategori som spårade produkter">
           <p className="text-sm text-muted-foreground mb-3">
-            Hämtar de <strong>100 mest sålda produkterna i varje kategori</strong> från Amazon.se (8 kategorier = upp till 800 produkter) och lägger till dem som <code>Product</code>-rader. Den dagliga <code>checkPrices</code>-funktionen börjar då automatiskt övervaka deras buy-box-pris. Hoppar över ASINs som redan finns. Kostar ~16 credits (2 sidor × 8 kategorier).
+            Hämtar de <strong>100 mest sålda produkterna i varje kategori</strong> från Amazon.se (12 kategorier = upp till 1 200 produkter) och lägger till dem som <code>Product</code>-rader. Den dagliga <code>checkPrices</code>-funktionen börjar då automatiskt övervaka deras buy-box-pris. Hoppar över ASINs som redan finns. Kostar ~24 credits (2 sidor × 12 kategorier).
           </p>
           <Button onClick={runImportTopProducts} disabled={topRunning} className="gap-2">
             {topRunning ? <><Spinner /> Importerar (kan ta 5-10 min)...</> : "Importera top 100 per kategori"}
