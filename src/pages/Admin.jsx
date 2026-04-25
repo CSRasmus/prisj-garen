@@ -8,6 +8,7 @@ import { generateBlogPosts } from "@/functions/generateBlogPosts";
 import { adminImportHistories } from "@/functions/adminImportHistories";
 import { recalculateAllPrices } from "@/functions/recalculateAllPrices";
 import { refreshPricingOffers } from "@/functions/refreshPricingOffers";
+import { importTopProductsAsTracked } from "@/functions/importTopProductsAsTracked";
 
 export default function Admin() {
   const [user, setUser] = useState(null);
@@ -35,6 +36,10 @@ export default function Admin() {
   const [offersRunning, setOffersRunning] = useState(false);
   const [offersResult, setOffersResult] = useState(null);
   const [offersLogs, setOffersLogs] = useState([]);
+
+  const [topRunning, setTopRunning] = useState(false);
+  const [topResult, setTopResult] = useState(null);
+  const [topLogs, setTopLogs] = useState([]);
 
   useEffect(() => {
     async function init() {
@@ -138,6 +143,22 @@ export default function Admin() {
     setRecalcRunning(false);
   }
 
+  async function runImportTopProducts() {
+    if (!confirm("Detta skapar upp till 800 nya produkter (100 per kategori × 8 kategorier) som spåras automatiskt. Det kostar ~16 Easyparser-credits och tar några minuter. Fortsätt?")) return;
+    setTopRunning(true);
+    setTopResult(null);
+    setTopLogs([]);
+    try {
+      const res = await importTopProductsAsTracked({});
+      setTopResult(res.data);
+      setTopLogs(res.data?.logs || []);
+      await loadStats();
+    } catch (err) {
+      setTopResult({ error: err.message });
+    }
+    setTopRunning(false);
+  }
+
   async function runGenerateBlog() {
     setBlogRunning(true);
     setBlogResult(null);
@@ -223,6 +244,45 @@ export default function Admin() {
           {bsrLogs.length > 0 && (
             <div className="mt-3 bg-muted rounded-lg p-3 max-h-80 overflow-y-auto">
               {bsrLogs.map((log, i) => (
+                <p key={i} className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{log}</p>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* Import top 100 per category as tracked Products */}
+        <Section title="🚀 Importera top 100 per kategori som spårade produkter">
+          <p className="text-sm text-muted-foreground mb-3">
+            Hämtar de <strong>100 mest sålda produkterna i varje kategori</strong> från Amazon.se (8 kategorier = upp till 800 produkter) och lägger till dem som <code>Product</code>-rader. Den dagliga <code>checkPrices</code>-funktionen börjar då automatiskt övervaka deras buy-box-pris. Hoppar över ASINs som redan finns. Kostar ~16 credits (2 sidor × 8 kategorier).
+          </p>
+          <Button onClick={runImportTopProducts} disabled={topRunning} className="gap-2">
+            {topRunning ? <><Spinner /> Importerar (kan ta 5-10 min)...</> : "Importera top 100 per kategori"}
+          </Button>
+
+          {topResult && !topRunning && (
+            <div className={`mt-3 text-sm px-4 py-3 rounded-lg ${topResult.error ? "bg-destructive/10 text-destructive" : "bg-accent text-accent-foreground"}`}>
+              {topResult.error
+                ? `Fel: ${topResult.error}`
+                : `✅ Klart: ${topResult.created} nya produkter, ${topResult.updated} uppdaterade, ${topResult.skipped} hoppades över, ${topResult.errors} fel — ${topResult.api_calls} API-anrop`}
+            </div>
+          )}
+
+          {topResult?.per_category && !topRunning && (
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              {Object.entries(topResult.per_category).map(([cat, s]) => (
+                <div key={cat} className="bg-muted rounded-lg px-3 py-2">
+                  <p className="font-semibold">{cat}</p>
+                  <p className="text-muted-foreground">
+                    {s.created} ny · {s.updated} upd · {s.skipped} skip · {s.errors} err
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {topLogs.length > 0 && (
+            <div className="mt-3 bg-muted rounded-lg p-3 max-h-80 overflow-y-auto">
+              {topLogs.map((log, i) => (
                 <p key={i} className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{log}</p>
               ))}
             </div>
