@@ -225,12 +225,15 @@ export default function ProductDetail() {
               Prishistorik (365 dagar)
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <PriceChart
               priceHistory={priceHistory}
               lowestPrice={product.lowest_price_90d}
               highestPrice={product.highest_price_90d}
             />
+            <p className="text-[11px] text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 leading-snug">
+              📊 Äldre datapunkter visar Amazons veckosnitt över alla säljare — dagsfärska priser är från Amazons buybox.
+            </p>
           </CardContent>
         </Card>
       </motion.div>

@@ -57,15 +57,27 @@ async function fetchAndSavePrice(base44, product, globalUpdatedAsins) {
   // Save to user's PriceHistory
   await base44.asServiceRole.entities.PriceHistory.create({ product_id: product.id, price, currency, checked_at: now });
 
-  // Compute 90d stats from GlobalPriceHistory for this ASIN
+  // Compute 90d stats — prefer live buybox data over historical weekly averages.
+  // Historical (easyparser_historical) is multi-seller weekly average_price — NOT buybox.
   const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
     { asin: product.asin, amazon_domain: "amazon.se" }, "-checked_at", 500
   );
+  const livePricesArr = [...globalHistory.filter(h => h.source !== "easyparser_historical").map(h => h.price), price].filter(v => v > 0);
   const allPrices = [...globalHistory.map(h => h.price), price].filter(v => v > 0);
-  const lowestPrice = Math.min(...allPrices);
-  const highestPrice = Math.max(...allPrices);
+
+  let lowestPrice;
+  let highestPrice;
+  let isLowPrice;
+  if (livePricesArr.length >= 7) {
+    lowestPrice = Math.min(...livePricesArr);
+    highestPrice = Math.max(...livePricesArr);
+    isLowPrice = price <= lowestPrice * 1.05;
+  } else {
+    lowestPrice = Math.min(...allPrices);
+    highestPrice = Math.max(...allPrices);
+    isLowPrice = false;
+  }
   const avgPrice = Math.round(allPrices.reduce((a, b) => a + b, 0) / allPrices.length);
-  const isLowPrice = price <= lowestPrice * 1.05;
 
   const percentFromAvg = avgPrice > 0 ? ((avgPrice - price) / avgPrice) * 100 : 0;
 

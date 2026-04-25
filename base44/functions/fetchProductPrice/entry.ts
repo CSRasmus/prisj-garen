@@ -80,16 +80,31 @@ Deno.serve(async (req) => {
     // Save to user's PriceHistory
     await base44.entities.PriceHistory.create({ product_id, price, currency, checked_at: now });
 
-    // Compute 90d stats — only data points from last 90 days
+    // Compute 90d stats — prefer live buybox data over historical weekly averages.
+    // Historical (easyparser_historical) is multi-seller weekly average_price — NOT buybox —
+    // so it's only used as a fallback when we don't yet have enough live data points.
     const globalHistory = await base44.asServiceRole.entities.GlobalPriceHistory.filter(
       { asin, amazon_domain: "amazon.se" }, "-checked_at", 500
     );
     const cutoff90d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
     const recent = globalHistory.filter(h => h.checked_at && h.checked_at >= cutoff90d);
+    const livePrices = [...recent.filter(h => h.source !== "easyparser_historical").map(h => h.price), price].filter(p => p > 0);
     const allPrices = [...recent.map(h => h.price), price].filter(p => p > 0);
-    const lowestPrice = Math.min(...allPrices);
-    const highestPrice = Math.max(...allPrices);
-    const isLowPrice = price <= lowestPrice * 1.05;
+
+    let lowestPrice;
+    let highestPrice;
+    let isLowPrice;
+    if (livePrices.length >= 7) {
+      // Enough live data — use only buybox prices for accurate 90d range
+      lowestPrice = Math.min(...livePrices);
+      highestPrice = Math.max(...livePrices);
+      isLowPrice = price <= lowestPrice * 1.05;
+    } else {
+      // Not enough live data — show range from all (incl. historical avg) but don't flag as low
+      lowestPrice = Math.min(...allPrices);
+      highestPrice = Math.max(...allPrices);
+      isLowPrice = false;
+    }
 
     const updateData = {
       current_price: price,

@@ -3,7 +3,10 @@ import React from "react";
 export default function SparklineChart({ priceHistory, width = 80, height = 30 }) {
   if (!priceHistory || priceHistory.length < 3) return null;
 
-  const sorted = [...priceHistory].sort((a, b) => new Date(a.checked_at) - new Date(b.checked_at));
+  // Prefer live buybox prices when we have enough; fall back to all (incl. weekly avg) otherwise
+  const sortedAll = [...priceHistory].sort((a, b) => new Date(a.checked_at) - new Date(b.checked_at));
+  const live = sortedAll.filter(h => h.source !== "easyparser_historical");
+  const sorted = live.length >= 3 ? live : sortedAll;
   const prices = sorted.map(h => h.price);
 
   const min = Math.min(...prices);

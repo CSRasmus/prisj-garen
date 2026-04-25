@@ -71,23 +71,17 @@ export function useQuickWatch() {
       const globalHistory = await base44.entities.GlobalPriceHistory.filter(
         { asin }, "-checked_at", 500
       );
-      if (globalHistory.length > 0) {
-        for (const point of globalHistory) {
-          await base44.entities.PriceHistory.create({
-            product_id: created.id,
-            price: point.price,
-            currency: point.currency || "SEK",
-            checked_at: point.checked_at,
-          });
-        }
-        await base44.entities.Product.update(created.id, {
-          current_price: globalHistory[0]?.price,
-          currency: "SEK",
-          last_checked: globalHistory[0]?.checked_at,
+      // Seed user's PriceHistory from GlobalPriceHistory (for chart display)
+      for (const point of globalHistory) {
+        await base44.entities.PriceHistory.create({
+          product_id: created.id,
+          price: point.price,
+          currency: point.currency || "SEK",
+          checked_at: point.checked_at,
         });
-      } else {
-        await fetchProductPrice({ product_id: created.id, asin, title });
       }
+      // ALWAYS fetch live buybox price — never use historical average_price as current_price
+      await fetchProductPrice({ product_id: created.id, asin, title });
 
       queryClient.invalidateQueries({ queryKey: ["products"] });
       toast({ title: `✅ ${title.slice(0, 40)}${title.length > 40 ? "…" : ""} bevakas!` });

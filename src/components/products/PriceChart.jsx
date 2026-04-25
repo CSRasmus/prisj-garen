@@ -9,10 +9,16 @@ import { motion } from "framer-motion";
 function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const data = payload[0].payload;
+  const isHistorical = data.isHistorical;
   return (
-    <div className="bg-card border rounded-lg shadow-lg px-3 py-2">
+    <div className="bg-card border rounded-lg shadow-lg px-3 py-2 max-w-[220px]">
       <p className="text-xs text-muted-foreground">{data.dateLabel}</p>
       <p className="font-bold text-sm">{formatPrice(data.price)}</p>
+      <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+        {isHistorical
+          ? "Veckosnitt från Amazon-marknaden (alla säljare)"
+          : "Faktiskt buybox-pris denna dag"}
+      </p>
     </div>
   );
 }
@@ -70,9 +76,12 @@ export default function PriceChart({ priceHistory, lowestPrice }) {
       date: new Date(entry.checked_at || entry.created_date).getTime(),
       dateLabel: format(new Date(entry.checked_at || entry.created_date), "d MMM", { locale: sv }),
       price: entry.price,
+      isHistorical: entry.source === "easyparser_historical",
     }));
 
   const count = chartData.length;
+  const liveCount = chartData.filter(d => !d.isHistorical).length;
+  const hasHistorical = chartData.some(d => d.isHistorical);
 
   if (count <= 1) return <EmptyState count={count} />;
 
@@ -82,10 +91,22 @@ export default function PriceChart({ priceHistory, lowestPrice }) {
 
   return (
     <div className="space-y-2">
-      {count >= 2 && count < 7 && (
+      {liveCount >= 2 && liveCount < 7 && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
           <span>📊</span>
-          <span>Historik samlas in — <strong>{count} av 90 dagar</strong> klara. Grafen blir mer användbar med mer data.</span>
+          <span>Live-historik samlas in — <strong>{liveCount} buybox-mätningar</strong> klara. Grafen blir mer exakt med mer data.</span>
+        </div>
+      )}
+      {hasHistorical && (
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground px-1">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-3 h-0.5 bg-primary"></span>
+            Buybox-pris (live)
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-3 border-t border-dashed border-muted-foreground/60"></span>
+            Veckosnitt (alla säljare)
+          </span>
         </div>
       )}
       <div className="h-64 sm:h-72 w-full">
@@ -126,6 +147,7 @@ export default function PriceChart({ priceHistory, lowestPrice }) {
               dataKey="price"
               stroke="hsl(152, 60%, 42%)"
               strokeWidth={2.5}
+              strokeDasharray={hasHistorical && liveCount < chartData.length ? "5 4" : "0"}
               fill="url(#priceGradient)"
               dot={(props) => props.index === lastIndex ? <PulseDot key="pulse" {...props} /> : null}
               activeDot={{ r: 4, fill: "hsl(152, 60%, 42%)", strokeWidth: 0 }}

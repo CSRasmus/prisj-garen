@@ -14,7 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import SparklineChart from "./SparklineChart";
 
-const MIN_DATA_POINTS = 14;
+const MIN_LIVE_DATA_POINTS = 14;
 
 function calcMedian(prices) {
   // Bug 2 fix: filter out null/NaN before calculating
@@ -26,8 +26,10 @@ function calcMedian(prices) {
 }
 
 // Returns "watching" | "low" | "normal"
+// Requires 14+ LIVE buybox data points (historical weekly averages don't count for state)
 function getPriceState(priceHistory, product) {
-  if (priceHistory.length < MIN_DATA_POINTS) return "watching";
+  const livePoints = priceHistory.filter(h => h.source !== "easyparser_historical");
+  if (livePoints.length < MIN_LIVE_DATA_POINTS) return "watching";
   return product.is_low_price ? "low" : "normal";
 }
 
@@ -43,7 +45,9 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
 
   const state = getPriceState(priceHistory, product);
 
-  const median = calcMedian(priceHistory.map(h => h.price)) ??
+  // Use live data only for "savings vs avg" calc — historical weekly averages skew it
+  const liveHistory = priceHistory.filter(h => h.source !== "easyparser_historical");
+  const median = calcMedian(liveHistory.map(h => h.price)) ??
     (product.lowest_price_90d && product.highest_price_90d
       ? (product.lowest_price_90d + product.highest_price_90d) / 2
       : null);

@@ -6,6 +6,7 @@ import { importBestSellers } from "@/functions/importBestSellers";
 import { checkPrices } from "@/functions/checkPrices";
 import { generateBlogPosts } from "@/functions/generateBlogPosts";
 import { adminImportHistories } from "@/functions/adminImportHistories";
+import { recalculateAllPrices } from "@/functions/recalculateAllPrices";
 
 export default function Admin() {
   const [user, setUser] = useState(null);
@@ -25,6 +26,10 @@ export default function Admin() {
   const [historyRunning, setHistoryRunning] = useState(false);
   const [historyResult, setHistoryResult] = useState(null);
   const [historyLogs, setHistoryLogs] = useState([]);
+
+  const [recalcRunning, setRecalcRunning] = useState(false);
+  const [recalcResult, setRecalcResult] = useState(null);
+  const [recalcLogs, setRecalcLogs] = useState([]);
 
   useEffect(() => {
     async function init() {
@@ -96,6 +101,21 @@ export default function Admin() {
       setHistoryResult({ error: err.message });
     }
     setHistoryRunning(false);
+  }
+
+  async function runRecalculatePrices() {
+    setRecalcRunning(true);
+    setRecalcResult(null);
+    setRecalcLogs([]);
+    try {
+      const res = await recalculateAllPrices({});
+      setRecalcResult(res.data);
+      setRecalcLogs(res.data?.logs || []);
+      await loadStats();
+    } catch (err) {
+      setRecalcResult({ error: err.message });
+    }
+    setRecalcRunning(false);
   }
 
   async function runGenerateBlog() {
@@ -235,6 +255,32 @@ export default function Admin() {
             <div className="mt-3 bg-muted rounded-lg p-3 max-h-64 overflow-y-auto">
               {historyLogs.map((log, i) => (
                 <p key={i} className="text-xs font-mono text-muted-foreground">{log}</p>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* Recalculate Prices (fix average_price bug) */}
+        <Section title="🩹 Räkna om alla priser (buybox-fix)">
+          <p className="text-sm text-muted-foreground mb-3">
+            Korrigerar produkter där <code>current_price</code> felaktigt sattes från Easyparsers veckosnitt (multi-seller average) istället för Amazons buybox. Räknar även om <code>lowest_price_90d</code> / <code>highest_price_90d</code> baserat på enbart live-data. ~1.5 sek per unik ASIN. Kostar 1 credit per ASIN.
+          </p>
+          <Button onClick={runRecalculatePrices} disabled={recalcRunning} variant="outline" className="gap-2">
+            {recalcRunning ? <><Spinner /> Räknar om priser...</> : "Räkna om alla priser nu"}
+          </Button>
+
+          {recalcResult && !recalcRunning && (
+            <div className={`mt-3 text-sm px-4 py-3 rounded-lg ${recalcResult.error ? "bg-destructive/10 text-destructive" : "bg-accent text-accent-foreground"}`}>
+              {recalcResult.error
+                ? `Fel: ${recalcResult.error}`
+                : `✅ ${recalcResult.processed} produkter bearbetade — ${recalcResult.priceChanged} hade ≥5% prisskillnad, ${recalcResult.failed} fel (${recalcResult.uniqueAsins} unika ASINs)`}
+            </div>
+          )}
+
+          {recalcLogs.length > 0 && (
+            <div className="mt-3 bg-muted rounded-lg p-3 max-h-80 overflow-y-auto">
+              {recalcLogs.map((log, i) => (
+                <p key={i} className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{log}</p>
               ))}
             </div>
           )}

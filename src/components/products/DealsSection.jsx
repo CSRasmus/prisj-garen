@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice, buildAmazonUrl } from "@/lib/affiliateUtils";
 import { trackAffiliatePurchase } from "@/functions/trackAffiliatePurchase";
 
-const MIN_DATA_POINTS = 14;
+const MIN_LIVE_DATA_POINTS = 14;
 
 function calcMedian(prices) {
   const valid = prices.filter(p => p != null && !isNaN(p) && p > 0);
@@ -42,17 +42,19 @@ export default function DealsSection({ products, historyByProduct }) {
     );
   }
 
-  // Bug 1 fix: pure computation from props, no useEffect needed
-  // Bug 5 fix: use median as normalpris
+  // Only show deals backed by LIVE buybox data — historical weekly averages can falsely
+  // make the current price look like a "deal" when it isn't.
   const deals = products
     .filter(p => {
       if (!p.is_low_price || !p.highest_price_90d || !p.current_price) return false;
       const history = historyByProduct[p.id] || [];
-      return history.length >= MIN_DATA_POINTS;
+      const liveCount = history.filter(h => h.source !== "easyparser_historical").length;
+      return liveCount >= MIN_LIVE_DATA_POINTS;
     })
     .map(p => {
       const history = historyByProduct[p.id] || [];
-      const median = calcMedian(history.map(h => h.price)) ??
+      const liveHistory = history.filter(h => h.source !== "easyparser_historical");
+      const median = calcMedian(liveHistory.map(h => h.price)) ??
         (p.lowest_price_90d && p.highest_price_90d ? (p.lowest_price_90d + p.highest_price_90d) / 2 : p.highest_price_90d);
       return { ...p, _median: median };
     })

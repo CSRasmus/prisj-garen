@@ -55,12 +55,12 @@ export default function AddProduct() {
     },
     onSuccess: async (created) => {
       try {
-        // 1. Check if we already have HISTORICAL data (not just live scrapes) for this ASIN
+        // 1. Check if we already have HISTORICAL data for this ASIN
         const historicalRows = await base44.entities.GlobalPriceHistory.filter(
           { asin: created.asin, source: "easyparser_historical" }, "-checked_at", 1
         );
 
-        // 2. If no historical data yet, fetch 12-month history from Easyparser
+        // 2. If no historical data yet, fetch 12-month history (used for chart trend only)
         if (historicalRows.length === 0) {
           try {
             await fetchProductHistory({ asin: created.asin });
@@ -69,31 +69,21 @@ export default function AddProduct() {
           }
         }
 
-        // 3. Now fetch all global history (live + historical) to seed PriceHistory
+        // 3. Seed user's PriceHistory from GlobalPriceHistory (for chart display)
         const globalHistory = await base44.entities.GlobalPriceHistory.filter(
           { asin: created.asin }, "-checked_at", 500
         );
-
-        // 3. Seed PriceHistory from GlobalPriceHistory
-        if (globalHistory.length > 0) {
-          for (const point of globalHistory) {
-            await base44.entities.PriceHistory.create({
-              product_id: created.id,
-              price: point.price,
-              currency: point.currency || "SEK",
-              checked_at: point.checked_at,
-            });
-          }
-          const latestPrice = globalHistory[0]?.price;
-          await base44.entities.Product.update(created.id, {
-            current_price: latestPrice,
-            currency: "SEK",
-            last_checked: globalHistory[0]?.checked_at,
+        for (const point of globalHistory) {
+          await base44.entities.PriceHistory.create({
+            product_id: created.id,
+            price: point.price,
+            currency: point.currency || "SEK",
+            checked_at: point.checked_at,
           });
-        } else {
-          // Last resort: live price scrape
-          await fetchProductPrice({ product_id: created.id, asin: created.asin, title: created.title });
         }
+
+        // 4. ALWAYS fetch live buybox price — never use historical average_price as current_price
+        await fetchProductPrice({ product_id: created.id, asin: created.asin, title: created.title });
       } catch (_) {
         toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
       }
