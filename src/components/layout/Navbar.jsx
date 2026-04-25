@@ -10,11 +10,6 @@ export default function Navbar() {
 
   const niches = [
     { to: "/deals", label: "🏆 Bästsäljare" },
-    { to: "/hund", label: "🐶 Hund" },
-    { to: "/katt", label: "🐱 Katt" },
-    { to: "/barn", label: "👶 Barn" },
-    { to: "/elektronik", label: "📱 Elektronik" },
-    { to: "/hem", label: "🏠 Hem" },
   ];
 
   const links = [
