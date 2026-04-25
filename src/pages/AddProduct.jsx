@@ -1,44 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Search, Plus, Loader2, Link2, AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Search, Link2, AlertCircle } from "lucide-react";
 import { fetchProductPrice } from "@/functions/fetchProductPrice";
-import { lookupProduct } from "@/functions/lookupProduct";
 import { fetchProductHistory } from "@/functions/fetchProductHistory";
 import { motion } from "framer-motion";
 import { getMaxProducts } from "@/lib/shareUtils";
 import { buildAmazonUrl } from "@/lib/affiliateUtils";
-
-function isShortUrl(input) {
-  return /^https?:\/\/(a\.co|amzn\.to|amzn\.eu)\//i.test(input.trim());
-}
-
-function extractASIN(input) {
-  const trimmed = input.trim();
-  // Standard ASIN patterns in URLs
-  const asinRegex = /(?:\/dp\/|\/gp\/product\/|\/ASIN\/)([A-Z0-9]{10})(?:[/?#]|$)/i;
-  const match = trimmed.match(asinRegex);
-  if (match) return match[1].toUpperCase();
-  // Bare ASIN (10 alphanumeric chars)
-  if (/^[A-Z0-9]{10}$/i.test(trimmed)) return trimmed.toUpperCase();
-  return null;
-}
+import SearchTab from "@/components/products/SearchTab";
+import LinkTab from "@/components/products/LinkTab";
 
 export default function AddProduct() {
-  const [url, setUrl] = useState("");
-  const [title, setTitle] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [asin, setAsin] = useState(null);
-  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [addingAsin, setAddingAsin] = useState(null);
 
   const [currentUser, setCurrentUser] = React.useState(null);
   React.useEffect(() => {
@@ -54,63 +34,29 @@ export default function AddProduct() {
   });
 
   const maxProducts = getMaxProducts(currentUser?.referred_count);
+  const atLimit = products.length >= maxProducts;
+  const existingAsins = products.map((p) => p.asin).filter(Boolean);
 
-  const lookupMutation = useMutation({
-    mutationFn: async (input) => {
-      if (isShortUrl(input)) {
-        throw new Error("Förkortad länk — öppna produkten i webbläsaren på Amazon.se och kopiera URL:en därifrån.");
-      }
-      const extractedAsin = extractASIN(input);
-      if (!extractedAsin) throw new Error("Kunde inte hitta produkten. Prova att kopiera länken från Amazon.se i webbläsaren istället för appen.\n\nExempel: https://www.amazon.se/dp/B0XXXXXXXXX");
-
-      const existing = products.find((p) => p.asin === extractedAsin);
-      if (existing) throw new Error("Den här produkten bevakas redan.");
-
-      const result = await lookupProduct({ asin: extractedAsin });
-      if (result.data?.error) throw new Error(result.data.error);
-
-      return {
-        asin: extractedAsin,
-        title: result.data.title,
-        image_url: result.data.image_url,
-        current_price: result.data.current_price,
-      };
-    },
-    onSuccess: (data) => {
-      setAsin(data.asin);
-      setTitle(data.title || "");
-      setImageUrl(data.image_url || "");
-      setError("");
-      if (data.current_price) {
-        toast({ title: `Pris: ${data.current_price} SEK`, description: data.title });
-      }
-    },
-    onError: (err) => setError(err.message),
-  });
-
-  const [fetchingPrice, setFetchingPrice] = useState(false);
-
+  // Shared add flow: create Product, seed history, redirect
   const addMutation = useMutation({
-    mutationFn: async () => {
-      if (products.length >= maxProducts) throw new Error(`Max ${maxProducts} produkter i bevakningslistan.`);
+    mutationFn: async ({ asin, title, image_url }) => {
+      if (atLimit) throw new Error(`Max ${maxProducts} produkter i bevakningslistan.`);
+      if (existingAsins.includes(asin)) throw new Error("Den här produkten bevakas redan.");
       return base44.entities.Product.create({
         title,
         asin,
-        image_url: imageUrl,
+        image_url,
         amazon_url: buildAmazonUrl(asin),
         notify_on_drop: true,
       });
     },
     onSuccess: async (created) => {
-      setFetchingPrice(true);
       try {
-        // Check if GlobalPriceHistory already exists for this ASIN
         const globalHistory = await base44.entities.GlobalPriceHistory.filter(
           { asin: created.asin }, "-checked_at", 500
         );
 
         if (globalHistory.length > 0) {
-          // Seed user's PriceHistory from existing global data
           for (const point of globalHistory) {
             await base44.entities.PriceHistory.create({
               product_id: created.id,
@@ -119,9 +65,6 @@ export default function AddProduct() {
               checked_at: point.checked_at,
             });
           }
-          // Only set current_price + last_checked here.
-          // 90d stats (lowest/highest/is_low_price) are computed by fetchProductHistory
-          // after the 12-month import completes — using the full dataset.
           const latestPrice = globalHistory[0]?.price;
           await base44.entities.Product.update(created.id, {
             current_price: latestPrice,
@@ -134,33 +77,39 @@ export default function AddProduct() {
       } catch (_) {
         toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
       }
-      setFetchingPrice(false);
 
       // Fire-and-forget: import 12-month history in the background
       fetchProductHistory({ asin: created.asin }).catch(() => {});
 
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast({ title: "Produkt tillagd!", description: "Hämtar prishistorik i bakgrunden..." });
-      navigate("/dashboard");
+      toast({
+        title: `✅ ${created.title} tillagd!`,
+        description: "Hämtar prishistorik...",
+      });
+
+      setTimeout(() => navigate("/dashboard"), 2000);
     },
-    onError: (err) => setError(err.message),
+    onError: (err) => {
+      toast({ title: err.message, variant: "destructive" });
+      setAddingAsin(null);
+    },
+    onSettled: () => {
+      // Keep addingAsin set until navigation; reset only on error (handled above)
+    },
   });
 
-  const handleLookup = (e) => {
-    e.preventDefault();
-    setError("");
-    setAsin(null);
-    lookupMutation.mutate(url);
+  const handleAdd = ({ asin, title, image_url }) => {
+    if (!asin || !title) return;
+    setAddingAsin(asin);
+    addMutation.mutate({ asin, title, image_url });
   };
-
-  const atLimit = products.length >= maxProducts;
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Lägg till produkt</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Klistra in en Amazon-länk eller ASIN-nummer
+          Sök direkt på Amazon.se eller klistra in en länk
         </p>
       </motion.div>
 
@@ -168,99 +117,52 @@ export default function AddProduct() {
         <Card className="border-border bg-muted/30">
           <CardContent className="p-4 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0" />
-            <p className="text-sm text-muted-foreground">Du har nått maxgränsen på {maxProducts} bevakade produkter. Värva fler vänner för att utöka!</p>
+            <p className="text-sm text-muted-foreground">
+              Du har nått maxgränsen på {maxProducts} bevakade produkter. Värva fler vänner för att utöka!
+            </p>
           </CardContent>
         </Card>
       )}
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+        <Tabs defaultValue="search" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 h-11">
+            <TabsTrigger value="search" className="gap-1.5">
+              <Search className="w-4 h-4" />
+              Sök produkt
+            </TabsTrigger>
+            <TabsTrigger value="link" className="gap-1.5">
               <Link2 className="w-4 h-4" />
-              Amazon-länk
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLookup} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="url">Produktlänk eller ASIN</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="url"
-                    placeholder="https://www.amazon.se/dp/B0... eller B0XXXXXXXXX"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    disabled={atLimit}
-                  />
-                  <Button
-                    type="submit"
-                    disabled={!url.trim() || lookupMutation.isPending || atLimit}
-                    className="shrink-0"
-                  >
-                    {lookupMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Search className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
+              Klistra in länk
+            </TabsTrigger>
+          </TabsList>
 
-              <p className="text-xs text-muted-foreground">
-                💡 Tips: Kopiera länken från Amazon.se i webbläsaren för bästa resultat
-              </p>
+          <TabsContent value="search" className="mt-4">
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <SearchTab
+                  onSelectProduct={handleAdd}
+                  addingAsin={addingAsin}
+                  disabled={atLimit || addMutation.isPending}
+                  existingAsins={existingAsins}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              {error && (
-                <p className="text-sm text-destructive flex items-start gap-1.5 whitespace-pre-line">
-                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {error}
-                </p>
-              )}
-            </form>
-
-            {asin && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="mt-6 space-y-4 pt-4 border-t"
-              >
-                <div className="flex gap-4 items-start">
-                  {imageUrl && (
-                    <div className="w-20 h-20 rounded-lg bg-muted overflow-hidden shrink-0">
-                      <img src={imageUrl} alt="" className="w-full h-full object-contain p-1" />
-                    </div>
-                  )}
-                  <div className="flex-1 space-y-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="title">Produktnamn</Label>
-                      <Input
-                        id="title"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Produktnamn"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">ASIN: {asin}</p>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full gap-2"
-                  onClick={() => addMutation.mutate()}
-                  disabled={!title.trim() || addMutation.isPending || fetchingPrice}
-                >
-                  {(addMutation.isPending || fetchingPrice) ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                  {fetchingPrice ? "Hämtar nuvarande pris..." : addMutation.isPending ? "Lägger till..." : "Lägg till bevakning"}
-                </Button>
-              </motion.div>
-            )}
-          </CardContent>
-        </Card>
+          <TabsContent value="link" className="mt-4">
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <LinkTab
+                  existingAsins={existingAsins}
+                  onAdd={handleAdd}
+                  disabled={atLimit}
+                  isAdding={addMutation.isPending}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </motion.div>
     </div>
   );
