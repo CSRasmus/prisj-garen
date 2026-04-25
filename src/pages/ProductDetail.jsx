@@ -201,12 +201,12 @@ export default function ProductDetail() {
             highlight={status === "low"}
           />
           <StatCard
-            label="Lägst 90d"
+            label="Lägst 365d"
             value={formatPrice(product.lowest_price_90d, product.currency)}
             icon={TrendingDown}
           />
           <StatCard
-            label="Högst 90d"
+            label="Högst 365d"
             value={formatPrice(product.highest_price_90d, product.currency)}
             icon={TrendingUp}
           />
@@ -222,7 +222,7 @@ export default function ProductDetail() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              Prishistorik{priceHistory.length > 90 ? " (upp till 365 dagar)" : " (90 dagar)"}
+              Prishistorik (365 dagar)
             </CardTitle>
           </CardHeader>
           <CardContent>
