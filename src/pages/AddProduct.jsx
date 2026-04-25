@@ -52,10 +52,24 @@ export default function AddProduct() {
     },
     onSuccess: async (created) => {
       try {
-        const globalHistory = await base44.entities.GlobalPriceHistory.filter(
+        // 1. Check if we already have global history for this ASIN
+        let globalHistory = await base44.entities.GlobalPriceHistory.filter(
           { asin: created.asin }, "-checked_at", 500
         );
 
+        // 2. If no history yet, fetch 12-month history from Easyparser (waits ~600ms)
+        if (globalHistory.length === 0) {
+          try {
+            await fetchProductHistory({ asin: created.asin });
+            globalHistory = await base44.entities.GlobalPriceHistory.filter(
+              { asin: created.asin }, "-checked_at", 500
+            );
+          } catch (_) {
+            // continue with whatever we have
+          }
+        }
+
+        // 3. Seed PriceHistory from GlobalPriceHistory
         if (globalHistory.length > 0) {
           for (const point of globalHistory) {
             await base44.entities.PriceHistory.create({
@@ -72,22 +86,20 @@ export default function AddProduct() {
             last_checked: globalHistory[0]?.checked_at,
           });
         } else {
+          // Last resort: live price scrape
           await fetchProductPrice({ product_id: created.id, asin: created.asin, title: created.title });
         }
       } catch (_) {
         toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
       }
 
-      // Fire-and-forget: import 12-month history in the background
-      fetchProductHistory({ asin: created.asin }).catch(() => {});
-
       queryClient.invalidateQueries({ queryKey: ["products"] });
       toast({
         title: `✅ ${created.title} tillagd!`,
-        description: "Hämtar prishistorik...",
+        description: "Prishistorik hämtad",
       });
 
-      setTimeout(() => navigate("/dashboard"), 2000);
+      setTimeout(() => navigate("/dashboard"), 1500);
     },
     onError: (err) => {
       toast({ title: err.message, variant: "destructive" });
