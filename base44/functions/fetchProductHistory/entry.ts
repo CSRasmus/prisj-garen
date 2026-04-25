@@ -54,7 +54,7 @@ function extractPriceHistory(data, debug = false) {
     if (!entry) continue;
     // Accept {date, value} or {timestamp, price} or {date, price}
     const rawDate = entry.date || entry.timestamp || entry.day || entry.recorded_at || entry.at;
-    const rawPrice = entry.value ?? entry.price ?? entry.amount;
+    const rawPrice = entry.average_price ?? entry.value ?? entry.price ?? entry.amount;
     if (!rawDate || rawPrice === null || rawPrice === undefined) continue;
 
     const priceNum = typeof rawPrice === "number"
