@@ -53,48 +53,19 @@ export default function AddProduct() {
         notify_on_drop: true,
       });
     },
-    onSuccess: async (created) => {
-      try {
-        // 1. Check if we already have HISTORICAL data for this ASIN
-        const historicalRows = await base44.entities.GlobalPriceHistory.filter(
-          { asin: created.asin, source: "easyparser_historical" }, "-checked_at", 1
-        );
-
-        // 2. If no historical data yet, fetch 12-month history (used for chart trend only)
-        if (historicalRows.length === 0) {
-          try {
-            await fetchProductHistory({ asin: created.asin });
-          } catch (_) {
-            // continue with whatever we have
-          }
-        }
-
-        // 3. Seed user's PriceHistory from GlobalPriceHistory (for chart display)
-        const globalHistory = await base44.entities.GlobalPriceHistory.filter(
-          { asin: created.asin }, "-checked_at", 500
-        );
-        for (const point of globalHistory) {
-          await base44.entities.PriceHistory.create({
-            product_id: created.id,
-            price: point.price,
-            currency: point.currency || "SEK",
-            checked_at: point.checked_at,
-          });
-        }
-
-        // 4. ALWAYS fetch live buybox price — never use historical average_price as current_price
-        await fetchProductPrice({ product_id: created.id, asin: created.asin, title: created.title });
-      } catch (_) {
-        toast({ title: "Kunde inte hämta pris, försök igen", variant: "destructive" });
-      }
+    onSuccess: (created) => {
+      // Fetch live buybox price in the background — don't block navigation
+      fetchProductPrice({ product_id: created.id, asin: created.asin, title: created.title })
+        .then(() => queryClient.invalidateQueries({ queryKey: ["products"] }))
+        .catch(() => {});
 
       queryClient.invalidateQueries({ queryKey: ["products"] });
       toast({
         title: `✅ ${created.title} tillagd!`,
-        description: "Prishistorik hämtad",
+        description: "Hämtar pris i bakgrunden...",
       });
 
-      setTimeout(() => navigate("/dashboard"), 1500);
+      navigate("/dashboard");
     },
     onError: (err) => {
       toast({ title: err.message, variant: "destructive" });
