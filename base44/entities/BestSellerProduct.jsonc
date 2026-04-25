@@ -56,6 +56,19 @@
       ],
       "description": "How the product was discovered"
     },
+    "lowest_price_90d": {
+      "type": "number",
+      "description": "Lowest new_offer price in last 90 days (from Easyparser pricing.offers)"
+    },
+    "highest_price_90d": {
+      "type": "number",
+      "description": "Highest new_offer price in last 90 days (from Easyparser pricing.offers)"
+    },
+    "is_deal": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if current_price is at or near the 90d low (\u22645% above lowest_price_90d)"
+    },
     "imported_at": {
       "type": "string",
       "format": "date-time"

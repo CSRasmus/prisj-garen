@@ -2,89 +2,33 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const EASYPARSER_API_KEY = Deno.env.get("EASYPARSER_API_KEY");
 
-// 8 categories — try BEST_SELLERS first via category_id, fall back to SEARCH with queries
+// 8 categories — uses SEARCH (BEST_SELLERS operation is not supported on this account).
+// Two broad queries per category combine to ~100 unique ASINs.
 const CATEGORIES = [
-  {
-    name: "Husdjur",
-    emoji: "🐶",
-    slug: "husdjur",
-    category_id: "2454166031",
-    queries: ["hundmat", "kattmat", "hundleksak"],
-  },
-  {
-    name: "Elektronik",
-    emoji: "🔌",
-    slug: "elektronik",
-    category_id: "2454155031",
-    queries: ["hörlurar", "smartwatch", "laddare"],
-  },
-  {
-    name: "Hem & kök",
-    emoji: "🏠",
-    slug: "hem-kok",
-    category_id: "2454158031",
-    queries: ["nespresso", "kaffemaskin", "köksmaskin"],
-  },
-  {
-    name: "Barnprodukter",
-    emoji: "👶",
-    slug: "barn",
-    category_id: "2454152031",
-    queries: ["pampers", "barnmat", "bilstol"],
-  },
-  {
-    name: "Sport & fritid",
-    emoji: "🎮",
-    slug: "sport",
-    category_id: "2454167031",
-    queries: ["yogamatta", "löparskor", "träningsband"],
-  },
-  {
-    name: "Böcker",
-    emoji: "📚",
-    slug: "bocker",
-    category_id: "2454153031",
-    queries: ["bestseller bok", "barnbok", "deckare"],
-  },
-  {
-    name: "Hälsa",
-    emoji: "🍎",
-    slug: "halsa",
-    category_id: "2454157031",
-    queries: ["vitamin", "kosttillskott", "protein"],
-  },
-  {
-    name: "Trädgård",
-    emoji: "🌱",
-    slug: "tradgard",
-    category_id: "2454168031",
-    queries: ["trädgårdsredskap", "blomkruka", "grill"],
-  },
+  { name: "Husdjur",        emoji: "🐶", slug: "husdjur",        queries: ["hund", "katt"] },
+  { name: "Elektronik",     emoji: "🔌", slug: "elektronik",     queries: ["hörlurar", "smartwatch"] },
+  { name: "Hem & kök",      emoji: "🏠", slug: "hem-kok",        queries: ["kaffemaskin", "köksmaskin"] },
+  { name: "Barnprodukter",  emoji: "👶", slug: "barn",           queries: ["barn leksak", "blöjor"] },
+  { name: "Sport & fritid", emoji: "🎮", slug: "sport",          queries: ["träning", "cykel"] },
+  { name: "Böcker",         emoji: "📚", slug: "bocker",         queries: ["bok bestseller", "deckare"] },
+  { name: "Hälsa",          emoji: "🍎", slug: "halsa",          queries: ["vitamin", "kosttillskott"] },
+  { name: "Trädgård",       emoji: "🌱", slug: "tradgard",       queries: ["trädgård", "grill"] },
 ];
 
-const PRODUCTS_PER_CATEGORY = 10;
+const PRODUCTS_PER_CATEGORY = 100;
+const DEAL_THRESHOLD = 0.05; // current_price within 5% of lowest_price_90d → flagged as deal
 
 async function easyparserRequest(params) {
   const url = `https://realtime.easyparser.com/v1/request?${new URLSearchParams(params)}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
+  const text = await res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.substring(0, 200)}`);
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error(`Bad JSON: ${text.substring(0, 200)}`); }
   if (!data.request_info?.success) {
     throw new Error(`API error: ${JSON.stringify(data.request_info).substring(0, 200)}`);
   }
   return data;
-}
-
-async function fetchBestSellers(category_id) {
-  const data = await easyparserRequest({
-    api_key: EASYPARSER_API_KEY,
-    platform: "AMZ",
-    domain: ".se",
-    operation: "BEST_SELLERS",
-    category_id,
-    output: "json",
-  });
-  return data.result?.best_sellers || data.result?.bestsellers || [];
 }
 
 async function fetchSearch(keyword) {
@@ -99,6 +43,25 @@ async function fetchSearch(keyword) {
   return data.result?.search_results || data.result?.results || [];
 }
 
+async function fetchPricingOffers(asin) {
+  const data = await easyparserRequest({
+    api_key: EASYPARSER_API_KEY,
+    platform: "AMZ",
+    domain: ".se",
+    operation: "SALES_ANALYSIS_HISTORY",
+    asin,
+    output: "json",
+    history_range: "0",
+  });
+  const offers = data.result?.product?.pricing?.offers || {};
+  const min = Number(offers.new_offer_min_price);
+  const max = Number(offers.new_offer_max_price);
+  return {
+    lowest_price_90d: min > 0 ? min : null,
+    highest_price_90d: max > 0 ? max : null,
+  };
+}
+
 function buildImageUrl(raw) {
   if (!raw) return null;
   if (/^https?:\/\//i.test(raw)) return raw;
@@ -110,20 +73,17 @@ function parsePrice(raw) {
   return parseFloat(String(raw).replace(/\s/g, "").replace(/,(\d{3})/g, "$1").replace(",", "."));
 }
 
-function extractFromBSR(item) {
+function extractItem(item) {
   const asin = item.asin || item.ASIN;
   const title = item.title || item.name;
-  const image_url = buildImageUrl(item.image || item.image_url || item.main_image?.link);
+  const image_url = buildImageUrl(item.image || item.image_url || item.thumbnail || item.main_image?.link);
   const priceRaw = item.price?.value ?? item.price?.raw ?? item.price ?? item.buybox_winner?.price?.value ?? null;
   return { asin, title, image_url, price: parsePrice(priceRaw) };
 }
 
-function extractFromSearch(item) {
-  const asin = item.asin || item.ASIN;
-  const title = item.title || item.name;
-  const image_url = buildImageUrl(item.image || item.image_url || item.thumbnail);
-  const priceRaw = item.price?.value ?? item.price?.raw ?? item.price ?? null;
-  return { asin, title, image_url, price: parsePrice(priceRaw) };
+function isDeal(price, low) {
+  if (!price || !low) return false;
+  return price <= low * (1 + DEAL_THRESHOLD);
 }
 
 Deno.serve(async (req) => {
@@ -143,146 +103,146 @@ Deno.serve(async (req) => {
       deactivated: 0,
       skipped: 0,
       errors: 0,
+      deals_found: 0,
       api_calls: 0,
       per_category: {},
     };
 
-    // Existing best-sellers — index by asin for fast lookup
-    const existing = await base44.asServiceRole.entities.BestSellerProduct.list("-imported_at", 2000);
+    const existing = await base44.asServiceRole.entities.BestSellerProduct.list("-imported_at", 5000);
     const existingByAsin = new Map(existing.map(b => [b.asin, b]));
     log(`Existing BestSellerProducts: ${existingByAsin.size}`);
 
-    // Track ASINs that appear in this run, per category — used to deactivate stale ones
-    const seenAsinsByCategory = new Map();
-
     for (const cat of CATEGORIES) {
       log(`\n=== ${cat.emoji} ${cat.name} ===`);
-      const catStat = { fetched: 0, imported: 0, updated: 0, deactivated: 0, skipped: 0, errors: 0, source: null };
+      const catStat = { fetched: 0, imported: 0, updated: 0, deactivated: 0, skipped: 0, errors: 0, deals: 0 };
       const seenInThisRun = new Set();
-      seenAsinsByCategory.set(cat.slug, seenInThisRun);
 
-      let items = [];
-
-      // Try BEST_SELLERS first
-      try {
-        log(`Trying BEST_SELLERS (category_id=${cat.category_id})...`);
-        result.api_calls++;
-        items = await fetchBestSellers(cat.category_id);
-        catStat.source = "best_sellers";
-        log(`  → BSR returned ${items.length} items`);
-      } catch (err) {
-        log(`  → BSR failed: ${err.message}. Falling back to SEARCH.`);
-      }
-
-      // Fallback: SEARCH (combine results from each query)
-      if (items.length === 0) {
-        catStat.source = "search";
-        const seenInCat = new Set();
-        for (const q of cat.queries) {
-          if (items.length >= PRODUCTS_PER_CATEGORY) break;
-          try {
-            log(`  SEARCH "${q}"...`);
-            result.api_calls++;
-            const r = await fetchSearch(q);
-            for (const it of r) {
-              const asin = it.asin || it.ASIN;
-              if (asin && !seenInCat.has(asin)) {
-                seenInCat.add(asin);
-                items.push(it);
-                if (items.length >= PRODUCTS_PER_CATEGORY) break;
-              }
+      // Combine SEARCH results from each query, dedupe by ASIN
+      const items = [];
+      const seen = new Set();
+      for (const q of cat.queries) {
+        if (items.length >= PRODUCTS_PER_CATEGORY) break;
+        try {
+          log(`  SEARCH "${q}"...`);
+          result.api_calls++;
+          const r = await fetchSearch(q);
+          log(`  → "${q}" returned ${r.length} items`);
+          for (const it of r) {
+            const asin = it.asin || it.ASIN;
+            if (asin && !seen.has(asin)) {
+              seen.add(asin);
+              items.push(it);
+              if (items.length >= PRODUCTS_PER_CATEGORY) break;
             }
-          } catch (err) {
-            log(`    → SEARCH "${q}" failed: ${err.message}`);
           }
-          await new Promise(r => setTimeout(r, 800));
+        } catch (err) {
+          log(`    → SEARCH "${q}" failed: ${err.message}`);
+          catStat.errors++;
         }
+        await new Promise(r => setTimeout(r, 800));
       }
 
       catStat.fetched = items.length;
+      log(`  → ${items.length} unique ASINs`);
 
-      // Take top N and import
-      const top = items.slice(0, PRODUCTS_PER_CATEGORY);
-      for (let i = 0; i < top.length; i++) {
-        const raw = top[i];
-        const { asin, title, image_url, price } = catStat.source === "best_sellers"
-          ? extractFromBSR(raw)
-          : extractFromSearch(raw);
+      // Pre-process: validate and split into new vs existing
+      const now = new Date().toISOString();
+      const toCreate = [];
+      const toUpdate = []; // { id, data }
+      const historyRows = [];
 
-        if (!asin || !title) {
-          log(`  [${i + 1}/${top.length}] skipped (missing asin/title)`);
-          catStat.skipped++;
-          continue;
-        }
-
-        if (!price || price < 1 || price > 100000) {
-          log(`  [${i + 1}/${top.length}] ${asin} → skipped (invalid price: ${price})`);
-          catStat.skipped++;
-          continue;
-        }
+      for (let i = 0; i < items.length; i++) {
+        const { asin, title, image_url, price } = extractItem(items[i]);
+        if (!asin || !title) { catStat.skipped++; continue; }
+        if (!price || price < 1 || price > 100000) { catStat.skipped++; continue; }
 
         seenInThisRun.add(asin);
 
+        // Fetch 90d range for deal detection (1 credit per ASIN)
+        let priceRange = { lowest_price_90d: null, highest_price_90d: null };
         try {
-          const now = new Date().toISOString();
-          const existingProduct = existingByAsin.get(asin);
-
-          if (existingProduct) {
-            // Update existing — refresh price, rank, activate
-            await base44.asServiceRole.entities.BestSellerProduct.update(existingProduct.id, {
-              current_price: price,
-              current_rank: i + 1,
-              category: cat.name,
-              category_emoji: cat.emoji,
-              category_slug: cat.slug,
-              imported_at: now,
-              active: true,
-              ...(image_url ? { image_url } : {}),
-            });
-            catStat.updated++;
-            log(`  [${i + 1}/${top.length}] 🔄 ${asin} — updated (rank ${i + 1}, ${price} SEK)`);
-          } else {
-            // New product
-            await base44.asServiceRole.entities.BestSellerProduct.create({
-              asin,
-              title,
-              image_url: image_url || null,
-              current_price: price,
-              currency: "SEK",
-              category: cat.name,
-              category_emoji: cat.emoji,
-              category_slug: cat.slug,
-              current_rank: i + 1,
-              source: catStat.source,
-              imported_at: now,
-              active: true,
-            });
-            catStat.imported++;
-            log(`  [${i + 1}/${top.length}] ✅ ${asin} — ${title.substring(0, 50)} (${price} SEK)`);
-          }
-
-          // Seed GlobalPriceHistory with live price
-          await base44.asServiceRole.entities.GlobalPriceHistory.create({
-            asin,
-            price,
-            currency: "SEK",
-            checked_at: now,
-            amazon_domain: "amazon.se",
-            source: "live",
-          });
+          result.api_calls++;
+          priceRange = await fetchPricingOffers(asin);
+          await new Promise(r => setTimeout(r, 1500)); // Easyparser rate limit
         } catch (err) {
-          log(`  [${i + 1}/${top.length}] ${asin} → ERROR: ${err.message}`);
-          catStat.errors++;
+          log(`    pricing.offers ${asin} failed: ${err.message}`);
         }
+
+        const deal = isDeal(price, priceRange.lowest_price_90d);
+        if (deal) catStat.deals++;
+
+        const existingProduct = existingByAsin.get(asin);
+        const baseData = {
+          title,
+          current_price: price,
+          current_rank: i + 1,
+          category: cat.name,
+          category_emoji: cat.emoji,
+          category_slug: cat.slug,
+          imported_at: now,
+          active: true,
+          is_deal: deal,
+          lowest_price_90d: priceRange.lowest_price_90d,
+          highest_price_90d: priceRange.highest_price_90d,
+          ...(image_url ? { image_url } : {}),
+        };
+
+        if (existingProduct) {
+          toUpdate.push({ id: existingProduct.id, data: baseData });
+        } else {
+          toCreate.push({
+            asin,
+            currency: "SEK",
+            source: "search",
+            image_url: image_url || null,
+            ...baseData,
+          });
+        }
+
+        historyRows.push({
+          asin, price, currency: "SEK", checked_at: now,
+          amazon_domain: "amazon.se", source: "live",
+        });
       }
 
-      // Deactivate stale products in this category that didn't appear in the new top list
+      // Bulk create new BestSellerProducts in chunks of 25
+      const CHUNK = 25;
+      for (let i = 0; i < toCreate.length; i += CHUNK) {
+        try {
+          await base44.asServiceRole.entities.BestSellerProduct.bulkCreate(toCreate.slice(i, i + CHUNK));
+          catStat.imported += Math.min(CHUNK, toCreate.length - i);
+        } catch (err) {
+          log(`  BestSellerProduct.bulkCreate chunk ${i} failed: ${err.message}`);
+          catStat.errors += Math.min(CHUNK, toCreate.length - i);
+        }
+        await new Promise(r => setTimeout(r, 600));
+      }
+
+      // Updates have to be one-by-one (no bulkUpdate). Add small pauses.
+      for (const u of toUpdate) {
+        try {
+          await base44.asServiceRole.entities.BestSellerProduct.update(u.id, u.data);
+          catStat.updated++;
+        } catch (err) {
+          log(`  Update ${u.id} failed: ${err.message}`);
+          catStat.errors++;
+        }
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      // Bulk seed live price history
+      for (let i = 0; i < historyRows.length; i += CHUNK) {
+        try {
+          await base44.asServiceRole.entities.GlobalPriceHistory.bulkCreate(historyRows.slice(i, i + CHUNK));
+        } catch (err) {
+          log(`  GlobalPriceHistory.bulkCreate chunk ${i} failed: ${err.message}`);
+        }
+        await new Promise(r => setTimeout(r, 600));
+      }
+
+      // Deactivate stale products in this category that didn't appear in this run
       for (const oldProd of existing) {
-        if (
-          oldProd.category_slug === cat.slug &&
-          oldProd.active &&
-          !seenInThisRun.has(oldProd.asin)
-        ) {
+        if (oldProd.category_slug === cat.slug && oldProd.active && !seenInThisRun.has(oldProd.asin)) {
           try {
             await base44.asServiceRole.entities.BestSellerProduct.update(oldProd.id, { active: false });
             catStat.deactivated++;
@@ -297,16 +257,16 @@ Deno.serve(async (req) => {
       result.deactivated += catStat.deactivated;
       result.skipped += catStat.skipped;
       result.errors += catStat.errors;
-      result.per_category[cat.name] = catStat;
+      result.deals_found += catStat.deals;
+      result.per_category[cat.name] = { ...catStat, source: "search" };
 
-      log(`  Subtotal: ${catStat.imported} new, ${catStat.updated} updated, ${catStat.deactivated} deactivated, ${catStat.skipped} skipped, ${catStat.errors} errors (source: ${catStat.source})`);
+      log(`  Subtotal: ${catStat.imported} new, ${catStat.updated} updated, ${catStat.deals} deals 🔥, ${catStat.deactivated} deactivated, ${catStat.skipped} skipped, ${catStat.errors} errors`);
 
-      // Small pause between categories
       await new Promise(r => setTimeout(r, 1000));
     }
 
     log(`\n=== DONE ===`);
-    log(`Total: Imported ${result.imported} new, Updated ${result.updated} existing, Deactivated ${result.deactivated} products (${result.skipped} skipped, ${result.errors} errors)`);
+    log(`Total: ${result.imported} new, ${result.updated} updated, ${result.deals_found} deals 🔥, ${result.deactivated} deactivated, ${result.skipped} skipped, ${result.errors} errors`);
     log(`API credits used: ~${result.api_calls}`);
 
     return Response.json({ success: true, ...result, logs });
