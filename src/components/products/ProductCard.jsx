@@ -152,9 +152,6 @@ export default function ProductCard({ product, priceHistory = [], onDelete, onTo
                     {formatPrice(product.current_price, product.currency)}
                   </span>
                 </div>
-                {state === "watching" && (
-                  <p className="text-xs text-muted-foreground mt-0.5">Laddar 12 månaders historik...</p>
-                )}
                 {/* Bug 2 fix: only show if savingsDiff > 0 */}
                 {showSavings && (
                   <p className="text-xs text-primary font-medium mt-0.5">
