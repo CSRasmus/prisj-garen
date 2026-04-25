@@ -1,79 +1,166 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const APP_URL = "https://prisfall.se";
+const LOGO_URL = "https://media.base44.com/images/public/69e0849cd5247ba1a2f9090f/ab8f118b8_generated_image.png";
+const PRIME_URL = "https://www.amazon.se/amazonprime?tag=priskoll-21";
 
-function buildWelcomeEmailHtml(userName) {
+function buildWelcomeEmailHtml(userName, referralCode) {
   const firstName = userName ? userName.split(" ")[0] : "där";
-  return `
-<!DOCTYPE html>
+  const refCode = referralCode || "";
+  const referralUrl = refCode ? `${APP_URL}/?ref=${refCode}` : APP_URL;
+
+  return `<!DOCTYPE html>
 <html lang="sv">
-<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head>
-<body style="margin:0;padding:0;background:#f4f7f6;font-family:'Helvetica Neue',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f6;padding:32px 16px;">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Välkommen till Prisfall</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f7f6;font-family:'Helvetica Neue',Arial,sans-serif;color:#1f2937;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f7f6;padding:24px 12px;">
     <tr><td align="center">
-      <table width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+
+        <!-- HEADER -->
         <tr>
-          <td style="background:#ffffff;padding:32px 32px 16px;text-align:center;border-bottom:1px solid #f3f4f6;">
-            <img src="https://media.base44.com/images/public/69e0849cd5247ba1a2f9090f/ab8f118b8_generated_image.png" width="80" height="80" alt="Prisfall" style="display:inline-block;border-radius:12px;"/>
-            <p style="color:#6b7280;margin:8px 0 0;font-size:13px;">Prisbevakning för Amazon.se</p>
+          <td align="center" style="padding:32px 24px 20px;background:#ffffff;border-bottom:1px solid #f3f4f6;">
+            <img src="${LOGO_URL}" width="72" height="72" alt="Prisfall" style="display:block;border-radius:14px;margin:0 auto 12px;"/>
+            <h1 style="margin:0;font-size:22px;font-weight:800;color:#16a34a;letter-spacing:-0.3px;">🔥 Prisfall</h1>
+            <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Sveriges enklaste prisbevakning</p>
           </td>
         </tr>
+
+        <!-- GREETING -->
         <tr>
-          <td style="padding:32px 32px 24px;">
-            <h2 style="color:#111827;font-size:22px;font-weight:700;margin:0 0 12px;">Hej ${firstName}! Välkommen till Prisfall 🎉</h2>
-            <p style="color:#4b5563;font-size:15px;line-height:1.6;margin:0;">
-              Du är nu en av de smarta shopparna som aldrig behöver betala för mycket på Amazon igen. Prisfall håller koll på priserna åt dig — helt automatiskt och helt gratis.
+          <td style="padding:28px 28px 8px;">
+            <h2 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#111827;">Hej ${firstName},</h2>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#4b5563;">
+              Tack för att du gick med i Prisfall — Sveriges enklaste sätt att aldrig betala för mycket på Amazon.se igen.
             </p>
           </td>
         </tr>
+
+        <!-- STEPS -->
         <tr>
-          <td style="padding:0 32px 28px;">
-            <h3 style="color:#111827;font-size:16px;font-weight:700;margin:0 0 16px;">Kom igång på 3 enkla steg:</h3>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
-                <span style="display:inline-block;background:#16a34a;color:#fff;font-size:12px;font-weight:700;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;margin-right:10px;">1</span>
-                <span style="color:#374151;font-size:14px;">Lägg till din första produkt — klistra in en Amazon-länk</span>
-              </td></tr>
-              <tr><td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
-                <span style="display:inline-block;background:#16a34a;color:#fff;font-size:12px;font-weight:700;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;margin-right:10px;">2</span>
-                <span style="color:#374151;font-size:14px;">Vi bevakar priset åt dig varje dag — automatiskt</span>
-              </td></tr>
-              <tr><td style="padding:10px 0;">
-                <span style="display:inline-block;background:#16a34a;color:#fff;font-size:12px;font-weight:700;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;margin-right:10px;">3</span>
-                <span style="color:#374151;font-size:14px;">Du får ett mail direkt när priset sjunker!</span>
+          <td style="padding:24px 28px 8px;">
+            <h3 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#111827;">🔥 Så kommer du igång</h3>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td width="36" valign="top" style="padding:10px 0;">
+                  <div style="background:#16a34a;color:#ffffff;font-size:13px;font-weight:700;border-radius:50%;width:28px;height:28px;text-align:center;line-height:28px;">1</div>
+                </td>
+                <td valign="top" style="padding:10px 0 10px 8px;">
+                  <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111827;">Lägg till din första produkt</p>
+                  <p style="margin:0;font-size:13px;line-height:1.5;color:#6b7280;">Klistra bara in en Amazon.se-länk → vi visar prishistorik från senaste året direkt</p>
+                </td>
+              </tr>
+              <tr>
+                <td width="36" valign="top" style="padding:10px 0;">
+                  <div style="background:#16a34a;color:#ffffff;font-size:13px;font-weight:700;border-radius:50%;width:28px;height:28px;text-align:center;line-height:28px;">2</div>
+                </td>
+                <td valign="top" style="padding:10px 0 10px 8px;">
+                  <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111827;">Få notis när priset sjunker</p>
+                  <p style="margin:0;font-size:13px;line-height:1.5;color:#6b7280;">Vi kollar priset varje natt och mailar dig bara när det verkligen är dags att slå till</p>
+                </td>
+              </tr>
+              <tr>
+                <td width="36" valign="top" style="padding:10px 0;">
+                  <div style="background:#16a34a;color:#ffffff;font-size:13px;font-weight:700;border-radius:50%;width:28px;height:28px;text-align:center;line-height:28px;">3</div>
+                </td>
+                <td valign="top" style="padding:10px 0 10px 8px;">
+                  <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#111827;">Installera appen på hemskärmen</p>
+                  <p style="margin:0;font-size:13px;line-height:1.5;color:#6b7280;">Snabbare access och push-notiser direkt i mobilen</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA primary -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+              <tr><td align="center">
+                <a href="${APP_URL}/dashboard" style="display:inline-block;background:#16a34a;color:#ffffff;font-size:15px;font-weight:800;padding:16px 36px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;min-height:44px;line-height:20px;">
+                  KOM IGÅNG NU →
+                </a>
               </td></tr>
             </table>
-            <div style="text-align:center;margin-top:24px;">
-              <a href="${APP_URL}/add" style="display:inline-block;background:#16a34a;color:#ffffff;font-size:15px;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;">
-                Lägg till din första produkt →
-              </a>
-            </div>
           </td>
         </tr>
+
+        <!-- SEPARATOR -->
+        <tr><td style="padding:28px 28px 0;"><div style="height:1px;background:#e5e7eb;line-height:1px;font-size:0;">&nbsp;</div></td></tr>
+
+        <!-- PRIME TIP -->
         <tr>
-          <td style="padding:0 32px 32px;">
-            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px 24px;">
-              <h3 style="color:#15803d;font-size:14px;font-weight:700;margin:0 0 14px;">💡 Tips för att spara ännu mer</h3>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr><td style="padding:8px 0;border-bottom:1px solid #dcfce7;">
-                  <p style="margin:0;font-size:13px;color:#374151;">💳 <strong>Norwegian-kortet</strong> ger dig extra cashback på alla köp. <a href="https://www.norwegian.com/se/frequent-flyer/norwegian-mastercard/" style="color:#16a34a;font-weight:600;">Läs mer →</a></p>
-                </td></tr>
-                <tr><td style="padding:8px 0;border-bottom:1px solid #dcfce7;">
-                  <p style="margin:0;font-size:13px;color:#374151;">📦 <strong>Amazon Prime</strong> ger gratis frakt. <a href="https://www.amazon.se/amazonprime?tag=priskoll-21" style="color:#16a34a;font-weight:600;">Prova gratis →</a></p>
-                </td></tr>
-                <tr><td style="padding:8px 0;">
-                  <p style="margin:0;font-size:13px;color:#374151;">👥 <strong>Bjud in en vän</strong> och lås upp 2 extra bevakningar. <a href="${APP_URL}/dashboard" style="color:#16a34a;font-weight:600;">Bjud in nu →</a></p>
-                </td></tr>
-              </table>
-            </div>
+          <td style="padding:24px 28px 8px;">
+            <h3 style="margin:0 0 12px;font-size:16px;font-weight:700;color:#111827;">💡 Proffstips — Testa Amazon Prime gratis</h3>
+            <p style="margin:0 0 12px;font-size:14px;color:#4b5563;">Visste du att Amazon Prime ger dig:</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr><td style="padding:6px 0;font-size:14px;color:#374151;">
+                <span style="color:#16a34a;font-weight:700;">✓</span>&nbsp; Gratis snabb leverans på tusentals produkter
+              </td></tr>
+              <tr><td style="padding:6px 0;font-size:14px;color:#374151;">
+                <span style="color:#16a34a;font-weight:700;">✓</span>&nbsp; Prime Video (filmer & serier)
+              </td></tr>
+              <tr><td style="padding:6px 0;font-size:14px;color:#374151;">
+                <span style="color:#16a34a;font-weight:700;">✓</span>&nbsp; Tidiga deals på Prime Day & Black Friday
+              </td></tr>
+            </table>
+
+            <p style="margin:18px 0 12px;font-size:14px;color:#374151;font-weight:600;">🎁 Testa gratis i 30 dagar:</p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr><td align="center">
+                <a href="${PRIME_URL}" style="display:inline-block;background:#2563eb;color:#ffffff;font-size:14px;font-weight:800;padding:16px 28px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;min-height:44px;line-height:20px;">
+                  STARTA GRATIS PRIME-PROVPERIOD →
+                </a>
+              </td></tr>
+            </table>
+            <p style="margin:10px 0 0;text-align:center;font-size:11px;color:#9ca3af;">(Avsluta när som helst, kostar 0 kr första månaden)</p>
           </td>
         </tr>
+
+        <!-- SEPARATOR -->
+        <tr><td style="padding:28px 28px 0;"><div style="height:1px;background:#e5e7eb;line-height:1px;font-size:0;">&nbsp;</div></td></tr>
+
+        <!-- REFERRAL -->
         <tr>
-          <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 32px;text-align:center;">
-            <p style="color:#9ca3af;font-size:12px;margin:0 0 4px;line-height:1.6;">📉 Prisfall — Helt gratis, alltid.</p>
-            <p style="color:#d1d5db;font-size:11px;margin:0;">Du får detta från Prisfall (prisfall.se)</p>
+          <td style="padding:24px 28px 8px;">
+            <h3 style="margin:0 0 12px;font-size:16px;font-weight:700;color:#111827;">📲 Bjud in vänner och få fler bevakningar</h3>
+            ${refCode ? `
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin:0 0 14px;text-align:center;">
+              <p style="margin:0 0 4px;font-size:13px;color:#15803d;">Din inbjudningskod:</p>
+              <p style="margin:0;font-size:20px;font-weight:800;color:#16a34a;letter-spacing:1px;">${refCode}</p>
+            </div>` : ''}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr><td style="padding:5px 0;font-size:14px;color:#374151;">🎯 <strong>1 vän</strong> = +2 produkter att bevaka</td></tr>
+              <tr><td style="padding:5px 0;font-size:14px;color:#374151;">🎯 <strong>3 vänner</strong> = +5 produkter</td></tr>
+              <tr><td style="padding:5px 0;font-size:14px;color:#374151;">🎯 <strong>5 vänner</strong> = +10 produkter</td></tr>
+            </table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;">
+              <tr><td align="center">
+                <a href="${referralUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;font-size:14px;font-weight:800;padding:14px 28px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;min-height:44px;line-height:20px;">
+                  DELA MED EN VÄN →
+                </a>
+              </td></tr>
+            </table>
           </td>
         </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="padding:32px 28px 28px;border-top:1px solid #f3f4f6;background:#f9fafb;">
+            <p style="margin:0 0 12px;font-size:13px;color:#4b5563;">Har du frågor? Svara bara på detta mail!</p>
+            <p style="margin:0 0 4px;font-size:13px;color:#4b5563;">Glada prisfall,</p>
+            <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#111827;">Prisfall</p>
+            <p style="margin:0 0 16px;font-size:12px;">
+              <a href="${APP_URL}" style="color:#16a34a;text-decoration:none;font-weight:600;">prisfall.se</a>
+            </p>
+            <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.5;">
+              Du får detta från Prisfall för att du registrerade dig på prisfall.se.
+            </p>
+          </td>
+        </tr>
+
       </table>
     </td></tr>
   </table>
@@ -118,8 +205,8 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.integrations.Core.SendEmail({
         to: user.email,
         from_name: "Prisfall",
-        subject: "📉 Välkommen till Prisfall — börja spara idag!",
-        body: buildWelcomeEmailHtml(user.full_name),
+        subject: "🎉 Välkommen till Prisfall! Här är ditt första pristips",
+        body: buildWelcomeEmailHtml(user.full_name, user.referral_code),
       });
       await base44.asServiceRole.entities.User.update(user.id, { welcome_email_sent: true });
       sent++;
