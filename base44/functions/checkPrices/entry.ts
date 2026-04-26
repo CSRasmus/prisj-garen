@@ -211,30 +211,46 @@ Deno.serve(async (req) => {
     }
 
     const base44 = createClientFromRequest(req);
-    const products = await base44.asServiceRole.entities.Product.list();
+    // Sort oldest-checked first so each run picks up products that weren't
+    // refreshed in previous runs.
+    const products = await base44.asServiceRole.entities.Product.list("last_checked");
 
     if (products.length === 0) {
       console.log("No products to update.");
       return Response.json({ message: 'No products to update', updated: 0, total: 0 });
     }
 
+    // Time-budget: stop processing before the platform 504s (~5 min).
+    // 2s rate-limit + ~1s per Easyparser call ≈ 3s/product → ~80 products per 4 min.
+    const startedAt = Date.now();
+    const TIME_BUDGET_MS = 4 * 60 * 1000;
+
     let updated = 0;
+    let processed = 0;
     const errors = [];
     const globalUpdatedAsins = new Set();
 
     // Map: userEmail -> { qualifiedProducts: [{product, result}], totalWatched: number }
     const userNotifyMap = {};
 
-    for (let i = 0; i < products.length; i++) {
-      const product = products[i];
-
-      // Track total watched per user
-      if (product.created_by) {
-        if (!userNotifyMap[product.created_by]) {
-          userNotifyMap[product.created_by] = { qualifiedProducts: [], totalWatched: 0 };
-        }
-        userNotifyMap[product.created_by].totalWatched++;
+    // Build totalWatched per user across ALL products (not just the ones we
+    // process in this batch) so the email's "Du bevakar X produkter" is correct.
+    for (const p of products) {
+      if (!p.created_by) continue;
+      if (!userNotifyMap[p.created_by]) {
+        userNotifyMap[p.created_by] = { qualifiedProducts: [], totalWatched: 0 };
       }
+      userNotifyMap[p.created_by].totalWatched++;
+    }
+
+    for (let i = 0; i < products.length; i++) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        console.log(`Time budget reached after ${processed} products — stopping early`);
+        break;
+      }
+
+      const product = products[i];
+      processed++;
 
       try {
         const result = await fetchAndSavePrice(base44, product, globalUpdatedAsins);
@@ -289,9 +305,10 @@ Deno.serve(async (req) => {
       console.log(`Sent summary email to ${userEmail} with ${qualifiedProducts.length} deals`);
     }
 
-    const msg = `Daily price update complete: ${updated}/${products.length} products updated, ${emailsSent} summary emails sent`;
+    const remaining = products.length - processed;
+    const msg = `Daily price update: ${updated}/${processed} products updated, ${emailsSent} emails sent (${remaining} remaining for next run)`;
     console.log(msg);
-    return Response.json({ message: msg, updated, total: products.length, emailsSent, errors });
+    return Response.json({ message: msg, updated, processed, total: products.length, remaining, emailsSent, errors });
   } catch (error) {
     console.error("checkPrices fatal error:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
