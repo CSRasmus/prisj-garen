@@ -46,21 +46,35 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch all active best sellers, sorted by oldest update first so each run
+    // picks up the products that were not refreshed in previous runs.
     const bestSellers = await base44.asServiceRole.entities.BestSellerProduct.filter(
-      { active: true }, "-imported_at", 200
+      { active: true }, "updated_date", 5000
     );
 
     if (bestSellers.length === 0) {
       return Response.json({ message: "No best sellers to update", updated: 0 });
     }
 
+    // Time-budget: stop processing before the platform 504s (~5 min).
+    // 1.5s rate-limit + ~1s per Easyparser call ≈ 2.5s/product → ~96 products per 4 min.
+    const startedAt = Date.now();
+    const TIME_BUDGET_MS = 4 * 60 * 1000; // 4 minutes
+
     let updated = 0;
     let errors = 0;
+    let processed = 0;
     const now = new Date().toISOString();
     const today = now.substring(0, 10);
 
     for (let i = 0; i < bestSellers.length; i++) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        console.log(`Time budget reached after ${processed} products — stopping early`);
+        break;
+      }
+
       const b = bestSellers[i];
+      processed++;
 
       try {
         const price = await fetchDetail(b.asin);
@@ -87,7 +101,8 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Update BestSellerProduct.current_price
+        // Update BestSellerProduct.current_price (also bumps updated_date so it
+        // moves to the back of the queue on the next scheduled run).
         await base44.asServiceRole.entities.BestSellerProduct.update(b.id, {
           current_price: price,
         });
@@ -105,9 +120,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    const msg = `Best seller price check: ${updated}/${bestSellers.length} updated, ${errors} errors`;
+    const remaining = bestSellers.length - processed;
+    const msg = `Best seller price check: ${updated}/${processed} updated, ${errors} errors (${remaining} remaining for next run)`;
     console.log(msg);
-    return Response.json({ message: msg, updated, total: bestSellers.length, errors });
+    return Response.json({ message: msg, updated, processed, total: bestSellers.length, remaining, errors });
   } catch (error) {
     console.error("checkBestSellerPrices fatal:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
