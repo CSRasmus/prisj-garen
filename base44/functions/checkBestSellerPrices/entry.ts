@@ -46,8 +46,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fetch all active best sellers, sorted by oldest update first so each run
-    // picks up the products that were not refreshed in previous runs.
+    // Fetch all active best sellers (runs once per day — process all in one go).
     const bestSellers = await base44.asServiceRole.entities.BestSellerProduct.filter(
       { active: true }, "updated_date", 5000
     );
@@ -56,12 +55,6 @@ Deno.serve(async (req) => {
       return Response.json({ message: "No best sellers to update", updated: 0 });
     }
 
-    // Time-budget: stop well before the platform 504s (~4 min observed).
-    // Each product = Easyparser DETAIL (~1-2s) + history filter + update + 1.5s rate-limit
-    // ≈ 4-5s/product in practice → ~35 products per 3 min budget.
-    const startedAt = Date.now();
-    const TIME_BUDGET_MS = 3 * 60 * 1000; // 3 minutes
-
     let updated = 0;
     let errors = 0;
     let processed = 0;
@@ -69,11 +62,6 @@ Deno.serve(async (req) => {
     const today = now.substring(0, 10);
 
     for (let i = 0; i < bestSellers.length; i++) {
-      if (Date.now() - startedAt > TIME_BUDGET_MS) {
-        console.log(`Time budget reached after ${processed} products — stopping early`);
-        break;
-      }
-
       const b = bestSellers[i];
       processed++;
 
@@ -102,8 +90,7 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Update BestSellerProduct.current_price (also bumps updated_date so it
-        // moves to the back of the queue on the next scheduled run).
+        // Update BestSellerProduct.current_price
         await base44.asServiceRole.entities.BestSellerProduct.update(b.id, {
           current_price: price,
         });
@@ -111,20 +98,21 @@ Deno.serve(async (req) => {
         updated++;
         console.log(`[${i + 1}/${bestSellers.length}] ${b.asin} → ${price} SEK`);
       } catch (err) {
+        // Catch per product so one failure doesn't stop the whole run
         console.error(`[${i + 1}/${bestSellers.length}] ${b.asin}: ${err.message}`);
         errors++;
       }
 
-      // Rate limit
+      // Rate limit: 2s between requests
       if (i < bestSellers.length - 1) {
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
 
-    const remaining = bestSellers.length - processed;
-    const msg = `Best seller price check: ${updated}/${processed} updated, ${errors} errors (${remaining} remaining for next run)`;
+    const msg = `Best seller price check: ${updated}/${processed} updated, ${errors} errors`;
     console.log(msg);
-    return Response.json({ message: msg, updated, processed, total: bestSellers.length, remaining, errors });
+    console.log(`Credits estimate: ${processed} products × 1 credit = ${processed} credits`);
+    return Response.json({ message: msg, updated, processed, total: bestSellers.length, errors, creditsUsed: processed });
   } catch (error) {
     console.error("checkBestSellerPrices fatal:", error.message);
     return Response.json({ error: error.message }, { status: 500 });
