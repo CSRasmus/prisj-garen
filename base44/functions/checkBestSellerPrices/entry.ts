@@ -56,10 +56,11 @@ Deno.serve(async (req) => {
       return Response.json({ message: "No best sellers to update", updated: 0 });
     }
 
-    // Time-budget: stop processing before the platform 504s (~5 min).
-    // 1.5s rate-limit + ~1s per Easyparser call ≈ 2.5s/product → ~96 products per 4 min.
+    // Time-budget: stop well before the platform 504s (~4 min observed).
+    // Each product = Easyparser DETAIL (~1-2s) + history filter + update + 1.5s rate-limit
+    // ≈ 4-5s/product in practice → ~35 products per 3 min budget.
     const startedAt = Date.now();
-    const TIME_BUDGET_MS = 4 * 60 * 1000; // 4 minutes
+    const TIME_BUDGET_MS = 3 * 60 * 1000; // 3 minutes
 
     let updated = 0;
     let errors = 0;
