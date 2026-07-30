@@ -27,11 +27,31 @@
     },
     "referred_by": {
       "type": "string"
+    },
+    "partner_id": {
+      "type": "string",
+      "description": "ID p\u00e5 Partner som v\u00e4rvade anv\u00e4ndaren"
+    },
+    "partner_slug": {
+      "type": "string",
+      "description": "Slug p\u00e5 Partner som v\u00e4rvade anv\u00e4ndaren"
+    },
+    "referred_by_partner_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "has_made_affiliate_purchase": {
+      "type": "boolean",
+      "default": false
+    },
+    "first_purchase_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "partner_commission_paid": {
+      "type": "boolean",
+      "default": false
     }
   },
-  "required": [
-    "last_notified",
-    "referral_code",
-    "referred_by"
-  ]
+  "required": []
 }

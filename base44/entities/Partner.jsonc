@@ -1,0 +1,75 @@
+{
+  "name": "Partner",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Namn p\u00e5 partnern, t.ex. Annas Hundsalong"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-v\u00e4nlig identifierare, unik"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "contact_person": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "djurfrisor",
+        "uppfodare",
+        "kurshallare",
+        "simhall",
+        "annat"
+      ],
+      "default": "annat"
+    },
+    "commission_per_user": {
+      "type": "number",
+      "default": 50
+    },
+    "commission_threshold": {
+      "type": "string",
+      "default": "first_purchase"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    },
+    "total_users": {
+      "type": "number",
+      "default": 0
+    },
+    "total_active_users": {
+      "type": "number",
+      "default": 0
+    },
+    "total_owed": {
+      "type": "number",
+      "default": 0
+    },
+    "total_paid": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name",
+    "slug"
+  ]
+}
